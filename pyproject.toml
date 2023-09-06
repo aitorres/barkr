@@ -20,6 +20,7 @@ keywords = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
+mastodon-py = "^1.8.1"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^3.4.0"
