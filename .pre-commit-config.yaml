@@ -1,0 +1,29 @@
+repos:
+  - repo: local
+    hooks:
+      - id: isort
+        name: Sort imports with isort
+        entry: isort
+        language: system
+        types: [python]
+      - id: black
+        name: Apply black formatting
+        entry: black
+        language: system
+        types: [python]
+      - id: flake8
+        name: Check style with flake8
+        entry: flake8
+        language: system
+        types: [python]
+      - id: pylint
+        name: Lint with Pylint
+        entry: pylint
+        language: system
+        types: [python]
+        args: [ "-rn", "-sn" ]
+      - id: mypy
+        name: Check types with mypy
+        entry: mypy
+        language: system
+        types: [python]

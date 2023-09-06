@@ -1,13 +1,45 @@
 [tool.poetry]
 name = "hermes"
 version = "0.1.0"
-description = ""
-authors = ["Andrés Ignacio Torres <andresitorresm@gmail.com>"]
+description = "Yet another cross-posting tool in Python"
+authors = ["Andrés Ignacio Torres <dev@aitorres.com>"]
 readme = "README.md"
+repository = "https://github.com/aitorres/hermes"
+keywords = [
+    "python",
+    "cli",
+    "social media",
+    "crossposting",
+    "mastodon",
+    "fediverse",
+    "twitter"
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/aitorres/hermes/issues"
 
 [tool.poetry.dependencies]
 python = "^3.11"
 
+[tool.poetry.dev-dependencies]
+pre-commit = "^3.4.0"
+flake8 = "^6.0.0"
+black = "^23.7.0"
+mypy = "^1.4.1"
+pylint = "^2.17.4"
+isort = "^5.12.0"
+
+[tool.isort]
+src_paths = ["hermes", "tests"]
+profile = "black"
+line_length = 90
+
+[tool.mypy]
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pylint.FORMAT]
+max-line-length=90
 
 [build-system]
 requires = ["poetry-core"]
