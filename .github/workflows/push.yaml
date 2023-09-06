@@ -33,3 +33,7 @@ jobs:
           source .venv/bin/activate
           pylint hermes
           flake8 --extend-exclude ".venv"
+      - name: Run tests with pytest
+        run: |
+          source .venv/bin/activate
+          pytest --cov=hermes --cov-fail-under=80 -vvv

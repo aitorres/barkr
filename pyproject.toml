@@ -23,6 +23,8 @@ python = "^3.11"
 mastodon-py = "^1.8.1"
 
 [tool.poetry.dev-dependencies]
+pytest = "^7.4.1"
+pytest-cov = "^4.1.0"
 pre-commit = "^3.4.0"
 flake8 = "^6.0.0"
 black = "^23.7.0"
