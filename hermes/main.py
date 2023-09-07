@@ -8,6 +8,7 @@ import logging
 from threading import Lock, Thread
 
 from hermes.connections.base import Connection
+from hermes.utils import wrap_while_true
 
 logger = logging.getLogger()
 
@@ -17,7 +18,7 @@ class Hermes:
     Wrapper for the main loop of the application.
     """
 
-    def __init__(self, connections: list[Connection]) -> None:
+    def __init__(self, connections: list[Connection], retry_interval: int = 15) -> None:
         """
         Instantiate a Hermes object with a list of connections, as well as
         internal queues and locks.
@@ -25,6 +26,8 @@ class Hermes:
 
         if not connections:
             raise ValueError("Must provide at least one connection!")
+
+        self.retry_interval: int = retry_interval
 
         logger.debug(
             "Initializing Hermes instance with %s connection(s)...", len(connections)
@@ -66,7 +69,9 @@ class Hermes:
                 messages = self.message_queues[connection.name]
                 connection.write(messages)
                 logger.info(
-                    "Posted %s message(s) from %s", len(messages), connection.name
+                    "Posted %s message(s) from %s's queue",
+                    len(messages),
+                    connection.name,
                 )
                 self.message_queues[connection.name] = []
 
@@ -77,8 +82,8 @@ class Hermes:
 
         logger.info("Starting Hermes!")
 
-        read_thread = Thread(target=self.read)
-        write_thread = Thread(target=self.write)
+        read_thread = Thread(target=wrap_while_true(self.read, self.retry_interval))
+        write_thread = Thread(target=wrap_while_true(self.write, self.retry_interval))
 
         read_thread.start()
         write_thread.start()

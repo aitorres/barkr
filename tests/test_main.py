@@ -2,6 +2,8 @@
 Test module for the main loop of the Hermes app.
 """
 
+import pytest
+
 from hermes.connections.base import Connection, ConnectionMode
 from hermes.main import Hermes
 
@@ -21,6 +23,16 @@ class ConnectionMockup(Connection):
 
     def _post(self, messages: list[str]) -> None:
         self.posted_messages += messages
+
+
+def test_hermes_no_connections() -> None:
+    """
+    Test the Hermes class with no connections.
+    A `ValueError` exception is expected.
+    """
+
+    with pytest.raises(ValueError):
+        Hermes([])
 
 
 def test_hermes_read_only() -> None:
