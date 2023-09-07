@@ -30,6 +30,9 @@ class Connection:
     def __init__(self, name: str, modes: list[ConnectionMode]) -> None:
         """
         Initializes the connection with a name and a list of modes
+
+        :param name: The name of the connection
+        :param modes: A list of modes for the connection
         """
 
         self.name = name
@@ -48,6 +51,8 @@ class Connection:
     def write(self, messages: list[str]) -> None:
         """
         Write messages to this connection
+
+        :param messages: A list of messages to be posted
         """
 
         if ConnectionMode.WRITE not in self.modes:
@@ -65,6 +70,8 @@ class Connection:
     def _post(self, messages: list[str]) -> None:
         """
         Post messages to this connection
+
+        :param messages: A list of messages to be posted
         """
 
         raise NotImplementedError(f"Post not implemented for connection {self.name}")

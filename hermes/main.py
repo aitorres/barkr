@@ -22,6 +22,9 @@ class Hermes:
         """
         Instantiate a Hermes object with a list of connections, as well as
         internal queues and locks.
+
+        :param connections: A list of connections to be used by the Hermes instance
+        :param retry_interval: The interval to wait between retries, in seconds
         """
 
         if not connections:

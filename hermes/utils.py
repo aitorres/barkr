@@ -12,6 +12,10 @@ def wrap_while_true(
     """
     Wrap a function to be called within a `while True` scope,
     sleeping for a given interval between calls.
+
+    :param callback: The function to be called within the loop
+    :param sleep_interval: The interval to sleep between calls, in seconds
+    :return: The wrapped function
     """
 
     def wrapper() -> None:
