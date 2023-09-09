@@ -1,5 +1,5 @@
 """
-Module-wide configuration for Hermes.
+Module-wide configuration for Barkr.
 """
 
 import logging

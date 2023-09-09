@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "hermes"
+name = "barkr"
 version = "0.1.0"
 description = "Yet another cross-posting tool in Python"
 authors = ["Andrés Ignacio Torres <dev@aitorres.com>"]
 readme = "README.md"
-repository = "https://github.com/aitorres/hermes"
+repository = "https://github.com/aitorres/barkr"
 keywords = [
     "python",
     "cli",
@@ -16,7 +16,7 @@ keywords = [
 ]
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/aitorres/hermes/issues"
+"Bug Tracker" = "https://github.com/aitorres/barkr/issues"
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -33,7 +33,7 @@ pylint = "^2.17.4"
 isort = "^5.12.0"
 
 [tool.isort]
-src_paths = ["hermes", "tests"]
+src_paths = ["barkr", "tests"]
 profile = "black"
 line_length = 90
 

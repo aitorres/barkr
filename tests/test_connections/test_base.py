@@ -5,7 +5,7 @@ and related code.
 
 import pytest
 
-from hermes.connections.base import Connection, ConnectionMode
+from barkr.connections.base import Connection, ConnectionMode
 
 
 def test_connection() -> None:

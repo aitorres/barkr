@@ -4,7 +4,7 @@ Module to implement unit tests for the Mastodon connection class
 
 import pytest
 
-from hermes.connections.mastodon import ConnectionMode, MastodonConnection
+from barkr.connections.mastodon import ConnectionMode, MastodonConnection
 
 
 def test_mastodon_connection_init(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -13,12 +13,12 @@ def test_mastodon_connection_init(monkeypatch: pytest.MonkeyPatch) -> None:
     """
 
     monkeypatch.setattr(
-        "hermes.connections.mastodon.Mastodon.account_verify_credentials",
+        "barkr.connections.mastodon.Mastodon.account_verify_credentials",
         lambda _: {"id": "1234567890"},
     )
 
     monkeypatch.setattr(
-        "hermes.connections.mastodon.Mastodon.account_statuses",
+        "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [{"id": "987654321"}],
     )
 
@@ -34,7 +34,7 @@ def test_mastodon_connection_init(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mastodon.min_id == "987654321"
 
     monkeypatch.setattr(
-        "hermes.connections.mastodon.Mastodon.account_statuses",
+        "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [
             {"id": "11223344", "content": "test message 1"},
             {"id": "55667788", "content": "test message 2"},
@@ -48,7 +48,7 @@ def test_mastodon_connection_init(monkeypatch: pytest.MonkeyPatch) -> None:
 
     posted_messages: list[str] = []
     monkeypatch.setattr(
-        "hermes.connections.mastodon.Mastodon.status_post",
+        "barkr.connections.mastodon.Mastodon.status_post",
         lambda _, message: posted_messages.append(message),
     )
 

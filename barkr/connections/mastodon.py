@@ -9,7 +9,7 @@ from typing import Any
 
 from mastodon import Mastodon  # type: ignore
 
-from hermes.connections.base import Connection, ConnectionMode
+from barkr.connections.base import Connection, ConnectionMode
 
 logger = logging.getLogger()
 

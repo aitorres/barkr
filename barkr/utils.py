@@ -1,5 +1,5 @@
 """
-Utility functions for the Hermes package.
+Utility functions for the Barkr package.
 """
 
 from time import sleep

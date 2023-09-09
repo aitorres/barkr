@@ -1,29 +1,29 @@
 """
-Module that implements the main loop of the Hermes application,
-enabling users to instance the Hermes class with their own connections
+Module that implements the main loop of the Barkr application,
+enabling users to instance the Barkr class with their own connections
 to set crossposting among multiple channels.
 """
 
 import logging
 from threading import Lock, Thread
 
-from hermes.connections.base import Connection
-from hermes.utils import wrap_while_true
+from barkr.connections.base import Connection
+from barkr.utils import wrap_while_true
 
 logger = logging.getLogger()
 
 
-class Hermes:
+class Barkr:
     """
     Wrapper for the main loop of the application.
     """
 
     def __init__(self, connections: list[Connection], retry_interval: int = 15) -> None:
         """
-        Instantiate a Hermes object with a list of connections, as well as
+        Instantiate a Barkr object with a list of connections, as well as
         internal queues and locks.
 
-        :param connections: A list of connections to be used by the Hermes instance
+        :param connections: A list of connections to be used by the Barkr instance
         :param retry_interval: The interval to wait between retries, in seconds
         """
 
@@ -33,14 +33,14 @@ class Hermes:
         self.retry_interval: int = retry_interval
 
         logger.debug(
-            "Initializing Hermes instance with %s connection(s)...", len(connections)
+            "Initializing Barkr instance with %s connection(s)...", len(connections)
         )
         self.connections: list[Connection] = connections
         self.message_queues: dict[str, list[str]] = {
             connection.name: [] for connection in connections
         }
         self.message_queues_lock: Lock = Lock()
-        logger.debug("Hermes instance initialized!")
+        logger.debug("Barkr instance initialized!")
 
     def read(self) -> None:
         """
@@ -80,10 +80,10 @@ class Hermes:
 
     def start(self) -> None:
         """
-        Start the Hermes instance
+        Start the Barkr instance
         """
 
-        logger.info("Starting Hermes!")
+        logger.info("Starting Barkr!")
 
         read_thread = Thread(target=wrap_while_true(self.read, self.retry_interval))
         write_thread = Thread(target=wrap_while_true(self.write, self.retry_interval))
@@ -91,9 +91,9 @@ class Hermes:
         read_thread.start()
         write_thread.start()
 
-        logger.info("Hermes started!")
+        logger.info("Barkr started!")
 
         read_thread.join()
         write_thread.join()
 
-        logger.info("Hermes exiting!")
+        logger.info("Barkr exiting!")

@@ -31,9 +31,9 @@ jobs:
       - name: Lint code with pylint and flake8
         run: |
           source .venv/bin/activate
-          pylint hermes
+          pylint barkr
           flake8 --extend-exclude ".venv"
       - name: Run tests with pytest
         run: |
           source .venv/bin/activate
-          pytest --cov=hermes --cov-fail-under=80 -vvv
+          pytest --cov=barkr --cov-fail-under=80 -vvv
