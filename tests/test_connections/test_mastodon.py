@@ -2,6 +2,8 @@
 Module to implement unit tests for the Mastodon connection class
 """
 
+from typing import Any
+
 import pytest
 
 from barkr.connections.mastodon import ConnectionMode, MastodonConnection
@@ -47,10 +49,31 @@ def test_mastodon_connection_init(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mastodon.min_id == "55667788"
 
     posted_messages: list[str] = []
+
+    def status_post_mockup(_, message: str) -> dict[str, Any]:
+        posted_messages.append(message)
+
+        return {"id": "12121212" if message == "test message 3" else "23232323"}
+
     monkeypatch.setattr(
-        "barkr.connections.mastodon.Mastodon.status_post",
-        lambda _, message: posted_messages.append(message),
+        "barkr.connections.mastodon.Mastodon.status_post", status_post_mockup
     )
 
     mastodon.write(["test message 3", "test message 4"])
     assert posted_messages == ["test message 3", "test message 4"]
+    assert mastodon.posted_message_ids == {"12121212", "23232323"}
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_statuses",
+        lambda *_args, **_kwargs: [
+            {"id": "12121212", "content": "test message 3"},
+            {"id": "23232323", "content": "test message 4"},
+            {"id": "44554455", "content": "test message 5"},
+        ],
+    )
+
+    messages = mastodon.read()
+
+    assert messages == ["test message 5"]
+    assert mastodon.min_id == "44554455"
+    assert mastodon.posted_message_ids == set()

@@ -68,6 +68,8 @@ class MastodonConnection(Connection):
             self.min_id = ""
             logger.debug("Mastodon (%s) initial min_id not set.", self.name)
 
+        self.posted_message_ids: set[str] = set()
+
     def _fetch(self) -> list[str]:
         """
         Fetch messages from this connection
@@ -88,7 +90,15 @@ class MastodonConnection(Connection):
         else:
             logger.debug("No new statuses fetched from Mastodon (%s)", self.name)
 
-        return [status["content"] for status in statuses]
+        new_status_messages: list[str] = []
+        for status in statuses:
+            if (status_id := status["id"]) not in self.posted_message_ids:
+                new_status_messages.append(status["content"])
+            else:
+                logger.debug("Status %s already posted, skipping.", status_id)
+                self.posted_message_ids.remove(status_id)
+
+        return new_status_messages
 
     def _post(self, messages: list[str]) -> None:
         """
@@ -98,5 +108,6 @@ class MastodonConnection(Connection):
         """
 
         for message in messages:
-            self.service.status_post(message)
+            posted_message = self.service.status_post(message)
+            self.posted_message_ids.add(posted_message["id"])
             logger.info("Posted status to Mastodon (%s): %s", self.name, message)
