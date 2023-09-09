@@ -18,11 +18,12 @@ class ConnectionMockup(Connection):
         super().__init__(name, modes)
         self.posted_messages: list[str] = []
 
-    def _fetch(self) -> list[str]:
-        return [f"{self.name}-TestMsg1", f"{self.name}-TestMsg2"]
+    def _fetch(self) -> list[tuple[str, str]]:
+        return [("1234", f"{self.name}-TestMsg1"), ("5678", f"{self.name}-TestMsg2")]
 
-    def _post(self, messages: list[str]) -> None:
+    def _post(self, messages: list[str]) -> list[str]:
         self.posted_messages += messages
+        return [f"id-{i}" for i in range(len(messages))]
 
 
 def test_barkr_no_connections() -> None:

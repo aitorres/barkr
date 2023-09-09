@@ -3,7 +3,10 @@ Module to implement the base class and enums for custom
 connections to social media networks, chat services, etc.
 """
 
+import logging
 from enum import Enum
+
+logger = logging.getLogger()
 
 
 class ConnectionMode(Enum):
@@ -22,10 +25,10 @@ class Connection:
 
     Subclasses should implement the _fetch and _post methods, which will
     be called depending on the modes each connection is set up with.
-    """
 
-    name: str
-    modes: list[ConnectionMode]
+    The base clase already supports a validation to avoid duplicate posting
+    of messages already posted by one connection on subsequent fetches.
+    """
 
     def __init__(self, name: str, modes: list[ConnectionMode]) -> None:
         """
@@ -35,8 +38,9 @@ class Connection:
         :param modes: A list of modes for the connection
         """
 
-        self.name = name
-        self.modes = modes
+        self.name: str = name
+        self.modes: list[ConnectionMode] = modes
+        self.posted_message_ids: set[str] = set()
 
     def read(self) -> list[str]:
         """
@@ -46,7 +50,17 @@ class Connection:
         if ConnectionMode.READ not in self.modes:
             return []
 
-        return self._fetch()
+        statuses: list[tuple[str, str]] = self._fetch()
+
+        messages_to_return: list[str] = []
+        for status_id, status_message in statuses:
+            if status_id not in self.posted_message_ids:
+                messages_to_return.append(status_message)
+            else:
+                logger.debug("Status %s already posted, skipping.", status_id)
+                self.posted_message_ids.remove(status_id)
+
+        return messages_to_return
 
     def write(self, messages: list[str]) -> None:
         """
@@ -58,20 +72,25 @@ class Connection:
         if ConnectionMode.WRITE not in self.modes:
             return
 
-        self._post(messages)
+        posted_ids: list[str] = self._post(messages)
+        self.posted_message_ids.update(posted_ids)
 
-    def _fetch(self) -> list[str]:
+    def _fetch(self) -> list[tuple[str, str]]:
         """
-        Fetch messages from this connection
+        Fetch messages from this connection and returns a list of pairs
+        containing (id, message)
+
+        :return: A list of pairs containing (id, message)
         """
 
         raise NotImplementedError(f"Fetch not implemented for connection {self.name}")
 
-    def _post(self, messages: list[str]) -> None:
+    def _post(self, messages: list[str]) -> list[str]:
         """
-        Post messages to this connection
+        Post messages to this connection and returns a list of message IDs
 
         :param messages: A list of messages to be posted
+        :return: A list of message IDs
         """
 
         raise NotImplementedError(f"Post not implemented for connection {self.name}")

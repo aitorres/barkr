@@ -9,7 +9,7 @@ import pytest
 from barkr.connections.mastodon import ConnectionMode, MastodonConnection
 
 
-def test_mastodon_connection_init(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Basic unit tests for the MastodonConnection class
     """
@@ -46,7 +46,7 @@ def test_mastodon_connection_init(monkeypatch: pytest.MonkeyPatch) -> None:
     messages = mastodon.read()
 
     assert messages == ["test message 1", "test message 2"]
-    assert mastodon.min_id == "55667788"
+    assert mastodon.min_id == "11223344"
 
     posted_messages: list[str] = []
 
@@ -75,5 +75,5 @@ def test_mastodon_connection_init(monkeypatch: pytest.MonkeyPatch) -> None:
     messages = mastodon.read()
 
     assert messages == ["test message 5"]
-    assert mastodon.min_id == "44554455"
+    assert mastodon.min_id == "12121212"
     assert mastodon.posted_message_ids == set()
