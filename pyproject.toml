@@ -17,6 +17,8 @@ keywords = [
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/aitorres/barkr/issues"
+"Change Log" = "https://github.com/aitorres/barkr/blob/main/CHANGELOG.md"
+
 
 [tool.poetry.dependencies]
 python = "^3.11"
