@@ -4,7 +4,7 @@
 
 With **Barkr** you can setup a series of channels (e.g. social media accounts) to read messages from and / or post messages to. You can mix and match read / write modes, and add multiple accounts of the same type of channel as well without worrying that the same message will be re-posted to a channel it comes from.
 
-[^1]: "Barkr" as in "entity that goes bark". See: [dogs](https://en.wikipedia.org/wiki/Dog).
+[^1]: "Barkr" (missing "e") as in "entity that barks". See: [dogs](https://en.wikipedia.org/wiki/Dog).
 
 ## Motivation
 
