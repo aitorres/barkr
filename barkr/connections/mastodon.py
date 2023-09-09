@@ -20,10 +20,6 @@ class MastodonConnection(Connection):
     supporting reading and writing statuses from the authenticated user.
     """
 
-    service: Mastodon
-    account_id: str
-    min_id: str
-
     def __init__(
         self,
         name: str,
@@ -55,7 +51,7 @@ class MastodonConnection(Connection):
             access_token=access_token,
             api_base_url=instance_url,
         )
-        self.account_id = self.service.account_verify_credentials()["id"]
+        self.account_id: str = self.service.account_verify_credentials()["id"]
         logger.info(
             "Mastodon (%s) connection initialized! (Account ID: %s)",
             self.name,
@@ -66,7 +62,7 @@ class MastodonConnection(Connection):
             self.account_id, exclude_reblogs=True, exclude_replies=True
         )
         if current_statuses:
-            self.min_id = current_statuses[0]["id"]
+            self.min_id: str = current_statuses[0]["id"]
             logger.debug("Mastodon (%s) initial min_id: %s", self.name, self.min_id)
         else:
             self.min_id = ""
