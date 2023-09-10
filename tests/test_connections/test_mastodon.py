@@ -22,6 +22,21 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(
         "barkr.connections.mastodon.Mastodon.account_statuses",
+        lambda *_args, **_kwargs: [],
+    )
+
+    mastodon_no_initial_statuses = MastodonConnection(
+        "MastodonClass",
+        [ConnectionMode.READ, ConnectionMode.WRITE],
+        "test_token",
+        "https://example.com",
+    )
+    assert mastodon_no_initial_statuses.name == "MastodonClass"
+    assert mastodon_no_initial_statuses.account_id == "1234567890"
+    assert mastodon_no_initial_statuses.min_id is None
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [{"id": "987654321"}],
     )
 
@@ -35,6 +50,14 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mastodon.name == "MastodonClass"
     assert mastodon.account_id == "1234567890"
     assert mastodon.min_id == "987654321"
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_statuses",
+        lambda *_args, **_kwargs: [],
+    )
+
+    messages = mastodon.read()
+    assert not messages
 
     monkeypatch.setattr(
         "barkr.connections.mastodon.Mastodon.account_statuses",

@@ -5,7 +5,7 @@ via their access token.
 """
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from bs4 import BeautifulSoup
 from mastodon import Mastodon  # type: ignore
@@ -64,10 +64,10 @@ class MastodonConnection(Connection):
             self.account_id, exclude_reblogs=True, exclude_replies=True
         )
         if current_statuses:
-            self.min_id: str = current_statuses[0]["id"]
+            self.min_id: Optional[str] = current_statuses[0]["id"]
             logger.debug("Mastodon (%s) initial min_id: %s", self.name, self.min_id)
         else:
-            self.min_id = ""
+            self.min_id = None
             logger.debug("Mastodon (%s) initial min_id not set.", self.name)
 
     def _fetch(self) -> list[Message]:
