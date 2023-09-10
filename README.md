@@ -28,7 +28,8 @@ A simple script showcasing how to set up three Mastodon connections with multipl
 
 ```python
 from barkr.main import Barkr
-from barkr.connections import MastodonConnection
+from barkr.connections.base import ConnectionModes
+from barkr.connections.mastodon import MastodonConnection
 
 barkr = Barkr(
     [
