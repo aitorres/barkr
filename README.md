@@ -62,6 +62,8 @@ barkr = Barkr(
 barkr.start()
 ```
 
+Always keep in mind proper secret management practices when using Barkr: instead of hardcoding access tokens / cookies / user and passwords, use tools like environment variables, `dotenv` or other secret managers!
+
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change. Contributions for issues that are already open by maintainers are welcome and encouraged.
