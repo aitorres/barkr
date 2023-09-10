@@ -6,6 +6,7 @@ and related code.
 import pytest
 
 from barkr.connections.base import Connection, ConnectionMode
+from barkr.models.message import Message
 
 
 def test_connection() -> None:
@@ -21,7 +22,7 @@ def test_connection() -> None:
     assert connection_1.modes == [ConnectionMode.READ]
 
     # This shouldn't raise any exceptions
-    connection_1.write(["test message"])
+    connection_1.write([Message(id="id1", message="test message")])
 
     with pytest.raises(NotImplementedError):
         connection_1.read()
@@ -31,10 +32,10 @@ def test_connection() -> None:
     assert connection_2.name == "Write Only"
     assert connection_2.modes == [ConnectionMode.WRITE]
 
-    assert connection_2.read() == []
+    assert not connection_2.read()
 
     with pytest.raises(NotImplementedError):
-        connection_2.write(["test message"])
+        connection_2.write([Message(id="id1", message="test message")])
 
     # Read/Write connection base
     connection_3 = Connection("Read/Write", [ConnectionMode.READ, ConnectionMode.WRITE])
@@ -45,4 +46,4 @@ def test_connection() -> None:
         connection_1.read()
 
     with pytest.raises(NotImplementedError):
-        connection_2.write(["test message"])
+        connection_2.write([Message(id="id1", message="test message")])

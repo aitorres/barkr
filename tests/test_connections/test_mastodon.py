@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from barkr.connections.mastodon import ConnectionMode, MastodonConnection
+from barkr.models.message import Message
 
 
 def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -45,7 +46,10 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     messages = mastodon.read()
 
-    assert messages == ["test message 1", "test message 2"]
+    assert messages == [
+        Message(id="11223344", message="test message 1"),
+        Message(id="55667788", message="test message 2"),
+    ]
     assert mastodon.min_id == "11223344"
 
     posted_messages: list[str] = []
@@ -59,7 +63,12 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "barkr.connections.mastodon.Mastodon.status_post", status_post_mockup
     )
 
-    mastodon.write(["test message 3", "test message 4"])
+    mastodon.write(
+        [
+            Message(id="ForeignId1", message="test message 3"),
+            Message(id="ForeignId2", message="test message 4"),
+        ]
+    )
     assert posted_messages == ["test message 3", "test message 4"]
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
 
@@ -74,6 +83,6 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     messages = mastodon.read()
 
-    assert messages == ["test message 5"]
+    assert messages == [Message(id="44554455", message="test message 5")]
     assert mastodon.min_id == "12121212"
     assert mastodon.posted_message_ids == set()

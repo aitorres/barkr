@@ -8,6 +8,7 @@ import logging
 from threading import Lock, Thread
 
 from barkr.connections.base import Connection
+from barkr.models.message import Message
 from barkr.utils import wrap_while_true
 
 logger = logging.getLogger()
@@ -36,7 +37,7 @@ class Barkr:
             "Initializing Barkr instance with %s connection(s)...", len(connections)
         )
         self.connections: list[Connection] = connections
-        self.message_queues: dict[str, list[str]] = {
+        self.message_queues: dict[str, list[Message]] = {
             connection.name: [] for connection in connections
         }
         self.message_queues_lock: Lock = Lock()

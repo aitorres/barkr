@@ -6,6 +6,8 @@ connections to social media networks, chat services, etc.
 import logging
 from enum import Enum
 
+from barkr.models.message import Message
+
 logger = logging.getLogger()
 
 
@@ -42,27 +44,29 @@ class Connection:
         self.modes: list[ConnectionMode] = modes
         self.posted_message_ids: set[str] = set()
 
-    def read(self) -> list[str]:
+    def read(self) -> list[Message]:
         """
-        Read new messages from this connection
+        Read and return new messages from this connection
+
+        :return: A list of new messages
         """
 
         if ConnectionMode.READ not in self.modes:
             return []
 
-        statuses: list[tuple[str, str]] = self._fetch()
+        messages: list[Message] = self._fetch()
 
-        messages_to_return: list[str] = []
-        for status_id, status_message in statuses:
-            if status_id not in self.posted_message_ids:
-                messages_to_return.append(status_message)
+        filtered_messages: list[Message] = []
+        for message in messages:
+            if (status_id := message.id) not in self.posted_message_ids:
+                filtered_messages.append(message)
             else:
                 logger.debug("Status %s already posted, skipping.", status_id)
                 self.posted_message_ids.remove(status_id)
 
-        return messages_to_return
+        return filtered_messages
 
-    def write(self, messages: list[str]) -> None:
+    def write(self, messages: list[Message]) -> None:
         """
         Write messages to this connection
 
@@ -75,7 +79,7 @@ class Connection:
         posted_ids: list[str] = self._post(messages)
         self.posted_message_ids.update(posted_ids)
 
-    def _fetch(self) -> list[tuple[str, str]]:
+    def _fetch(self) -> list[Message]:
         """
         Fetch messages from this connection and returns a list of pairs
         containing (id, message)
@@ -85,7 +89,7 @@ class Connection:
 
         raise NotImplementedError(f"Fetch not implemented for connection {self.name}")
 
-    def _post(self, messages: list[str]) -> list[str]:
+    def _post(self, messages: list[Message]) -> list[str]:
         """
         Post messages to this connection and returns a list of message IDs
 

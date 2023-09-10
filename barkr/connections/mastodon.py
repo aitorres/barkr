@@ -10,6 +10,7 @@ from typing import Any
 from mastodon import Mastodon  # type: ignore
 
 from barkr.connections.base import Connection, ConnectionMode
+from barkr.models.message import Message
 
 logger = logging.getLogger()
 
@@ -68,9 +69,11 @@ class MastodonConnection(Connection):
             self.min_id = ""
             logger.debug("Mastodon (%s) initial min_id not set.", self.name)
 
-    def _fetch(self) -> list[tuple[str, str]]:
+    def _fetch(self) -> list[Message]:
         """
         Fetch messages from this connection
+
+        :return: A list of messages
         """
 
         statuses: list[dict[str, Any]] = self.service.account_statuses(
@@ -88,20 +91,25 @@ class MastodonConnection(Connection):
         else:
             logger.debug("No new statuses fetched from Mastodon (%s)", self.name)
 
-        return [(status["id"], status["content"]) for status in statuses]
+        return [
+            Message(id=status["id"], message=status["content"]) for status in statuses
+        ]
 
-    def _post(self, messages: list[str]) -> list[str]:
+    def _post(self, messages: list[Message]) -> list[str]:
         """
         Post messages from a list to the Mastodon instance
 
         :param messages: A list of messages to be posted
+        :return: A list of message IDs
         """
 
         posted_message_ids: list[str] = []
 
         for message in messages:
-            posted_message = self.service.status_post(message)
+            posted_message = self.service.status_post(message.message)
             posted_message_ids.append(posted_message["id"])
-            logger.info("Posted status to Mastodon (%s): %s", self.name, message)
+            logger.info(
+                "Posted status to Mastodon (%s): %s", self.name, message.message
+            )
 
         return posted_message_ids

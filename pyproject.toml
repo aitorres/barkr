@@ -55,6 +55,7 @@ warn_unused_configs = true
 
 [tool.pylint.FORMAT]
 max-line-length=90
+good-names="id"
 
 [build-system]
 requires = ["poetry-core"]
