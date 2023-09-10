@@ -7,6 +7,7 @@ via their access token.
 import logging
 from typing import Any
 
+from bs4 import BeautifulSoup
 from mastodon import Mastodon  # type: ignore
 
 from barkr.connections.base import Connection, ConnectionMode
@@ -92,7 +93,10 @@ class MastodonConnection(Connection):
             logger.debug("No new statuses fetched from Mastodon (%s)", self.name)
 
         return [
-            Message(id=status["id"], message=status["content"]) for status in statuses
+            Message(
+                id=status["id"], message=BeautifulSoup(status["content"], "lxml").text
+            )
+            for status in statuses
         ]
 
     def _post(self, messages: list[Message]) -> list[str]:

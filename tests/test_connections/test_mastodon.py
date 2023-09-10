@@ -77,12 +77,15 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda *_args, **_kwargs: [
             {"id": "12121212", "content": "test message 3"},
             {"id": "23232323", "content": "test message 4"},
-            {"id": "44554455", "content": "test message 5"},
+            {
+                "id": "44554455",
+                "content": "<p>test message 5</p> <p>test message 6</p>",
+            },
         ],
     )
 
     messages = mastodon.read()
 
-    assert messages == [Message(id="44554455", message="test message 5")]
+    assert messages == [Message(id="44554455", message="test message 5 test message 6")]
     assert mastodon.min_id == "12121212"
     assert mastodon.posted_message_ids == set()
