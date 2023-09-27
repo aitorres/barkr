@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.2.0] - 2023-09-26
+
+### Added
+
+- Initial implementation of a Cohost connection. This is the first version to officially support distinct channels!
+
+### Changed
+
+- Test coverage for Mastodon Connection increased
+
 ## [0.1.2] - 2023-09-09
 
 ### Added
