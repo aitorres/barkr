@@ -7,7 +7,7 @@ to set crossposting among multiple channels.
 import logging
 from threading import Lock, Thread
 
-from barkr.connections.base import Connection
+from barkr.connections.base import Connection, ConnectionMode
 from barkr.models.message import Message
 from barkr.utils import wrap_while_true
 
@@ -50,18 +50,22 @@ class Barkr:
         """
 
         for connection in self.connections:
+            if ConnectionMode.READ not in connection.modes:
+                continue
+
             messages = connection.read()
 
-            with self.message_queues_lock:
-                for name in self.message_queues:
-                    if name != connection.name:
-                        self.message_queues[name] += messages
-                        logger.info(
-                            "Added %s message(s) from %s to %s queue",
-                            len(messages),
-                            connection.name,
-                            name,
-                        )
+            if messages:
+                with self.message_queues_lock:
+                    for name in self.message_queues:
+                        if name != connection.name:
+                            self.message_queues[name] += messages
+                            logger.info(
+                                "Added %s message(s) from %s to %s queue",
+                                len(messages),
+                                connection.name,
+                                name,
+                            )
 
     def write(self) -> None:
         """
@@ -69,15 +73,20 @@ class Barkr:
         """
 
         for connection in self.connections:
+            if ConnectionMode.WRITE not in connection.modes:
+                continue
+
             with self.message_queues_lock:
                 messages = self.message_queues[connection.name]
-                connection.write(messages)
-                logger.info(
-                    "Posted %s message(s) from %s's queue",
-                    len(messages),
-                    connection.name,
-                )
-                self.message_queues[connection.name] = []
+
+                if messages:
+                    connection.write(messages)
+                    logger.info(
+                        "Posted %s message(s) from %s's queue",
+                        len(messages),
+                        connection.name,
+                    )
+                    self.message_queues[connection.name] = []
 
     def start(self) -> None:
         """
