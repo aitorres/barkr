@@ -50,6 +50,7 @@ class Barkr:
         """
 
         for connection in self.connections:
+            # Reading is only allowed for connections with the READ mode
             if ConnectionMode.READ not in connection.modes:
                 continue
 
@@ -73,20 +74,22 @@ class Barkr:
         """
 
         for connection in self.connections:
-            if ConnectionMode.WRITE not in connection.modes:
-                continue
+            # Writing is only allowed for connections with the WRITE mode
+            if ConnectionMode.WRITE in connection.modes:
+                with self.message_queues_lock:
+                    messages = self.message_queues[connection.name]
 
+                    if messages:
+                        connection.write(messages)
+                        logger.info(
+                            "Posted %s message(s) from %s's queue",
+                            len(messages),
+                            connection.name,
+                        )
+
+            # Clear the queue for the current connection
             with self.message_queues_lock:
-                messages = self.message_queues[connection.name]
-
-                if messages:
-                    connection.write(messages)
-                    logger.info(
-                        "Posted %s message(s) from %s's queue",
-                        len(messages),
-                        connection.name,
-                    )
-                    self.message_queues[connection.name] = []
+                self.message_queues[connection.name] = []
 
     def start(self) -> None:
         """
