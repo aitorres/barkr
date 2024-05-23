@@ -38,15 +38,15 @@ lxml = "^5.2.2"
 cohost = "^0.4.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^8.2.0"
+pytest = "^8.2.1"
 pytest-cov = "^5.0.0"
 pre-commit = "^3.7.1"
 flake8 = "^7.0.0"
 black = "^24.4.2"
 mypy = "^1.10.0"
-pylint = "^3.2.1"
+pylint = "^3.2.2"
 isort = "^5.13.2"
-types-setuptools = "^69.5.0.20240518"
+types-setuptools = "^70.0.0.20240523"
 types-beautifulsoup4 = "^4.12.0.20240511"
 
 [tool.isort]
