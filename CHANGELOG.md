@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.3.0] - 2024-09-25
+
+### Changed
+
+- Dependency updates
+
+### Removed
+
+- Cohost support has been removed since [the platform is now on read-only mode and is being sunsetted](https://cohost.org/staff/post/7611443-cohost-to-shut-down).
+
 ## [0.2.1] - 2023-09-27
 
 ### Changed

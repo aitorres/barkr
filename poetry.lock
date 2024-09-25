@@ -226,20 +226,6 @@ files = [
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
-name = "cohost"
-version = "0.5.1"
-description = "Unofficial Python API wrapper for Cohost.org - the fourth website!"
-optional = false
-python-versions = ">=3.9"
-files = [
-    {file = "cohost-0.5.1-py3-none-any.whl", hash = "sha256:0bbe22c113712697372043d008a4b22b0570e7dbb575eacf6641e4ef8b20ce25"},
-    {file = "cohost-0.5.1.tar.gz", hash = "sha256:69152549e3e4a77b3f315f4d5f816e524f57f9e09415bd0c17f00978ab14f5f9"},
-]
-
-[package.dependencies]
-requests = "*"
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -1112,4 +1098,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11, <3.13"
-content-hash = "5f679c527234d89de8f2c7cab3c3b9f81f3dce66537d72477514a851d30f39fb"
+content-hash = "e59722f7b591c8e4cd29b27b01582dd70bb18955932b4e03f2d01558265033d0"

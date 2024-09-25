@@ -24,12 +24,11 @@ pip install barkr
 
 Create a Python script and specify all the channels you want to use. Channel connections are present in the [`barkr.connections`](./barkr/connections/) module.
 
-A simple script showcasing how to set up two Mastodon connections and a Cohost connection with multiple modes that can run in the background is outlined below:
+A simple script showcasing how to set up three Mastodon connections with multiple modes that can run in the background is outlined below:
 
 ```python
 from barkr.main import Barkr
 from barkr.connections.base import ConnectionModes
-from barkr.connections.cohost import CohostConnection
 from barkr.connections.mastodon import MastodonConnection
 
 barkr = Barkr(
@@ -43,14 +42,12 @@ barkr = Barkr(
             "<INSTANCE URL HERE>",
         ),
         # Barkr will write queued messages to this account, but will not read anything
-        # new posted to this account or queue anything from this account to other ones;
-        # check `CohostConnection` implementation for details on how login happens
-        CohostConnection(
+        # new posted to this account or queue anything from this account to other ones.
+        MastodonConnection(
             "Write only connection",
             [ConnectionModes.WRITE],
-            username="<USERNAME HERE>",
-            password="<PASSWORD HERE>",
-            project="<PROJECT HERE>",
+            "<ACCESS TOKEN HERE>",
+            "<INSTANCE URL HERE>",
         ),
         # Barkr will read new messages from this account to be queued onto others, and will
         # post new messages from other channels into this one as well.

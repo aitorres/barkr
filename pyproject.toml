@@ -35,7 +35,6 @@ python = "^3.11, <3.13"
 mastodon-py = "^1.8.1"
 beautifulsoup4 = "^4.12.3"
 lxml = "^5.3.0"
-cohost = "^0.5.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.3.3"
