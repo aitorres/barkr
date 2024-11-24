@@ -45,7 +45,7 @@ black = "^24.10.0"
 mypy = "^1.13.0"
 pylint = "^3.3.1"
 isort = "^5.13.2"
-types-setuptools = "^75.3.0.20241107"
+types-setuptools = "^75.5.0.20241122"
 types-beautifulsoup4 = "^4.12.0.20241020"
 
 [tool.isort]
