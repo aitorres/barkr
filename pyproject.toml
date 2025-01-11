@@ -57,6 +57,10 @@ line_length = 90
 warn_return_any = true
 warn_unused_configs = true
 
+[[tool.mypy.overrides]]
+module = ["mastodon.*"]
+follow_untyped_imports = true
+
 [tool.pylint.FORMAT]
 max-line-length=90
 good-names="id"

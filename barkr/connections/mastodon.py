@@ -8,7 +8,7 @@ import logging
 from typing import Any, Optional
 
 from bs4 import BeautifulSoup
-from mastodon import Mastodon  # type: ignore
+from mastodon import Mastodon
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.models.message import Message
@@ -21,6 +21,8 @@ class MastodonConnection(Connection):
     Custom connection class for Mastodon instances,
     supporting reading and writing statuses from the authenticated user.
     """
+
+    service: Mastodon
 
     def __init__(
         self,
