@@ -47,3 +47,12 @@ def test_connection() -> None:
 
     with pytest.raises(NotImplementedError):
         connection_2.write([Message(id="id1", message="test message")])
+
+
+def test_connection_mode() -> None:
+    """Tests that at least one mode is required for a connection"""
+
+    with pytest.raises(
+        ValueError, match="At least one mode must be provided for the connection."
+    ):
+        Connection("No Modes", [])

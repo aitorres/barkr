@@ -40,6 +40,9 @@ class Connection:
         :param modes: A list of modes for the connection
         """
 
+        if not modes:
+            raise ValueError("At least one mode must be provided for the connection.")
+
         self.name: str = name
         self.modes: list[ConnectionMode] = modes
         self.posted_message_ids: set[str] = set()
