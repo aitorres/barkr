@@ -30,6 +30,7 @@ A simple script showcasing how to set up three Mastodon connections with multipl
 from barkr.main import Barkr
 from barkr.connections.base import ConnectionModes
 from barkr.connections.mastodon import MastodonConnection
+from barkr.connections.twitter import TwitterConnection
 
 barkr = Barkr(
     [
@@ -56,6 +57,17 @@ barkr = Barkr(
             [ConnectionModes.READ, ConnectionModes.WRITE],
             "<ACCESS TOKEN HERE>",
             "<INSTANCE URL HERE>",
+        ),
+        # Another example using Twitter -- note that the TwitterConnection only
+        # supports write-only mode through the Twitter V2 API
+        TwitterConnection(
+            "Write only Twitter Connection",
+            [ConnectionModes.WRITE],
+            "<CONSUMER KEY HERE>",
+            "<CONSUMER SECRET HERE>",
+            "<ACCESS KEY HERE>",
+            "<ACCESS SECRET HERE>",
+            "<BEARER TOKEN HERE>",
         ),
     ]
 )
