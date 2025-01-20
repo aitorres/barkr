@@ -58,7 +58,7 @@ def test_connection_mode() -> None:
         Connection("No Modes", [])
 
 
-def test_connection_handles_message_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_connection_handles_posted_message_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Tests that the Connection class handles message IDs correctly
     in order to avoid posting duplicate messages.
@@ -121,3 +121,64 @@ def test_connection_handles_message_ids(monkeypatch: pytest.MonkeyPatch) -> None
     )
     assert connection.posted_message_ids == {"1", "2", "3", "4"}
     assert posted_message_ids == ["1", "2", "3", "4"]
+
+
+def test_connection_avoids_infinite_loops(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Tests that the Connection class can avoid infinite loops between
+    multiple connections that are set to read and write.
+
+    For example, if we have Connection A and Connection B both set to
+    read/write mode, we want to avoid:
+    1. Connection A fetching a message with content X and enqueueing it
+       for other connections.
+    2. Connection B posting a message with content X.
+    3. Connection B fetching a message with content X (the one that it just posted)
+       and enqueueing it for others
+    4. Connection A fetching a message with content X...
+    """
+
+    # Setting up the two connections
+    connection_a = Connection(
+        "Connection A", [ConnectionMode.READ, ConnectionMode.WRITE]
+    )
+    connection_b = Connection(
+        "Connection B", [ConnectionMode.READ, ConnectionMode.WRITE]
+    )
+    posted_by_b = []
+
+    # First mock: Connection A fetches messages with IDs 1, 2, and 3
+    def mock_fetch_a() -> list[Message]:
+        return [
+            Message(id="1", message="test message 1"),
+            Message(id="2", message="test message 2"),
+            Message(id="3", message="test message 3"),
+        ]
+
+    monkeypatch.setattr(connection_a, "_fetch", mock_fetch_a)
+
+    messages = connection_a.read()
+
+    # Second mock: Connection B posts messages read from A
+    def mock_post_b(messages: list[Message]) -> list[str]:
+        for message in messages:
+            posted_by_b.append(message.id + "-b")
+        return posted_by_b
+
+    monkeypatch.setattr(connection_b, "_post", mock_post_b)
+
+    connection_b.write(messages)
+
+    # Third mock: Connection B fetches messages with its new IDs
+    def mock_fetch_b() -> list[Message]:
+        return [
+            Message(id="1-b", message="test message 1"),
+            Message(id="2-b", message="test message 2"),
+            Message(id="3-b", message="test message 3"),
+        ]
+
+    monkeypatch.setattr(connection_b, "_fetch", mock_fetch_b)
+
+    # We shouldn't bring anything here and this should stop the loop
+    messages = connection_b.read()
+    assert not messages
