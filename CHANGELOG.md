@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.5.0] - 2025-01-19
+
+### Added
+
+- Implemented Bluesky connection with read and write support
+
+### Changed
+
+- Minor dependency updates
+
+### Fixed
+
+- Addressed a bug that caused messages to constantly push in a loop due to not keeping track of previously seen messages properly. New unit tests added to prevent this issue from arising again in the future.
+
 ## [0.4.0] - 2025-01-11
 
 ### Added
