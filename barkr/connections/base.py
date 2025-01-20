@@ -59,15 +59,14 @@ class Connection:
 
         messages: list[Message] = self._fetch()
 
-        filtered_messages: list[Message] = []
+        new_messages: list[Message] = []
         for message in messages:
             if (status_id := message.id) not in self.posted_message_ids:
-                filtered_messages.append(message)
+                new_messages.append(message)
             else:
                 logger.debug("Status %s already posted, skipping.", status_id)
-                self.posted_message_ids.remove(status_id)
 
-        return filtered_messages
+        return new_messages
 
     def write(self, messages: list[Message]) -> None:
         """

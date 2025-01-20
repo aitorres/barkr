@@ -112,4 +112,4 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert messages == [Message(id="44554455", message="test message 5 test message 6")]
     assert mastodon.min_id == "12121212"
-    assert mastodon.posted_message_ids == set()
+    assert mastodon.posted_message_ids == {"12121212", "23232323"}
