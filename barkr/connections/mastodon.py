@@ -46,7 +46,7 @@ class MastodonConnection(Connection):
         """
         super().__init__(name, modes)
 
-        logger.debug(
+        logger.info(
             "Initializing Mastodon (%s) connection to instance %s",
             self.name,
             instance_url,
@@ -67,10 +67,10 @@ class MastodonConnection(Connection):
         )
         if current_statuses:
             self.min_id: Optional[str] = current_statuses[0]["id"]
-            logger.debug("Mastodon (%s) initial min_id: %s", self.name, self.min_id)
+            logger.info("Mastodon (%s) initial min_id: %s", self.name, self.min_id)
         else:
             self.min_id = None
-            logger.debug("Mastodon (%s) initial min_id not set.", self.name)
+            logger.info("Mastodon (%s) initial min_id not set.", self.name)
 
     def _fetch(self) -> list[Message]:
         """
@@ -92,7 +92,7 @@ class MastodonConnection(Connection):
             )
             self.min_id = statuses[0]["id"]
         else:
-            logger.debug("No new statuses fetched from Mastodon (%s)", self.name)
+            logger.info("No new statuses fetched from Mastodon (%s)", self.name)
 
         return [
             Message(

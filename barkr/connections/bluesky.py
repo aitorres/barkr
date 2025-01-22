@@ -39,7 +39,7 @@ class BlueskyConnection(Connection):
 
         super().__init__(name, modes)
 
-        logger.debug(
+        logger.info(
             "Initializing Bluesky (%s) connection for user %s",
             self.name,
             handle,
@@ -58,10 +58,10 @@ class BlueskyConnection(Connection):
         user_feed = self.service.app.bsky.feed.get_author_feed({"actor": handle}).feed
         if user_feed:
             self.min_id: Optional[str] = user_feed[0].post.indexed_at
-            logger.debug("Bluesky (%s) initial min_id: %s", self.name, self.min_id)
+            logger.info("Bluesky (%s) initial min_id: %s", self.name, self.min_id)
         else:
             self.min_id = None
-            logger.debug("Bluesky (%s) initial min_id not set.", self.name)
+            logger.info("Bluesky (%s) initial min_id not set.", self.name)
 
     def _fetch(self) -> list[Message]:
         """
@@ -88,7 +88,7 @@ class BlueskyConnection(Connection):
             self.min_id = messages[0].id
             logger.info("Bluesky (%s) has %s new messages.", self.name, len(user_feed))
         else:
-            logger.debug("Bluesky (%s) has no new messages.", self.name)
+            logger.info("Bluesky (%s) has no new messages.", self.name)
 
         return messages
 

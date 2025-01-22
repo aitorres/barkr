@@ -64,7 +64,7 @@ class Connection:
             if (status_id := message.id) not in self.posted_message_ids:
                 new_messages.append(message)
             else:
-                logger.debug("Status %s already posted, skipping.", status_id)
+                logger.info("Status %s already posted, skipping.", status_id)
 
         return new_messages
 

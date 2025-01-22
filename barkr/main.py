@@ -33,7 +33,7 @@ class Barkr:
 
         self.retry_interval: int = retry_interval
 
-        logger.debug(
+        logger.info(
             "Initializing Barkr instance with %s connection(s)...", len(connections)
         )
         self.connections: list[Connection] = connections
@@ -41,7 +41,7 @@ class Barkr:
             connection.name: [] for connection in connections
         }
         self.message_queues_lock: Lock = Lock()
-        logger.debug("Barkr instance initialized!")
+        logger.info("Barkr instance initialized!")
 
     def read(self) -> None:
         """

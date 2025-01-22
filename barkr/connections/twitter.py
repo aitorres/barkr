@@ -55,7 +55,7 @@ class TwitterConnection(Connection):
         """
         super().__init__(name, modes)
 
-        logger.debug("Initializing Twitter (%s) connection", self.name)
+        logger.info("Initializing Twitter (%s) connection", self.name)
         if self.modes != [ConnectionMode.WRITE]:
             raise NotImplementedError("TwitterConnection only supports write mode.")
 
