@@ -5,6 +5,7 @@ via their handle and password.
 """
 
 import logging
+from datetime import datetime
 from typing import Optional
 
 from atproto import Client
@@ -57,6 +58,8 @@ class BlueskyConnection(Connection):
 
         user_feed = self.service.app.bsky.feed.get_author_feed({"actor": handle}).feed
         if user_feed:
+            # Set the initial min_id to the most recent post's indexed_at,
+            # which is a UTC timestamp string
             self.min_id: Optional[str] = user_feed[0].post.indexed_at
             logger.info("Bluesky (%s) initial min_id: %s", self.name, self.min_id)
         else:
@@ -79,7 +82,9 @@ class BlueskyConnection(Connection):
             for feed_view in user_feed:
                 post = feed_view.post
 
-                if post.indexed_at > self.min_id:
+                if self.min_id is None or datetime.fromisoformat(
+                    post.indexed_at
+                ) > datetime.fromisoformat(self.min_id):
                     messages.append(
                         Message(id=post.indexed_at, message=post.record.text)
                     )
@@ -103,14 +108,20 @@ class BlueskyConnection(Connection):
         posted_message_ids: list[str] = []
 
         for message in messages:
-            record = self.service.send_post(text=message.message)
-            posted_message_ids.append(record.indexed_at)
+            created_record = self.service.send_post(text=message.message)
+            created_uri = created_record.uri
+            post_details = self.service.get_posts([created_uri]).posts[0]
+            indexed_at = post_details.indexed_at
+
             logger.info(
-                "Posted message %s to Bluesky (%s) connection (ID: %s, Indexed At: %s)",
+                "Posted message %s to Bluesky (%s) connection (URI: %s, Indexed At: %s)",
                 message.message,
                 self.name,
-                record.cid,
-                record.indexed_at,
+                created_uri,
+                indexed_at,
             )
+
+            self.min_id = indexed_at
+            posted_message_ids.append(indexed_at)
 
         return posted_message_ids

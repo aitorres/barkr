@@ -75,8 +75,16 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
         lambda *_args, **_kwargs: MockFeed(
             [
-                MockPost(MockPostData("987654321", MockRecord("Hello, world!"))),
-                MockPost(MockPostData("123456789", MockRecord("Goodbye, world!"))),
+                MockPost(
+                    MockPostData(
+                        "2000-10-31T01:30:00.000-05:00", MockRecord("Hello, world!")
+                    )
+                ),
+                MockPost(
+                    MockPostData(
+                        "2000-10-29T01:30:00.000-05:00", MockRecord("Goodbye, world!")
+                    )
+                ),
             ]
         ),
     )
@@ -89,7 +97,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     assert bluesky.name == "BlueskyClass"
-    assert bluesky.min_id == "987654321"
+    assert bluesky.min_id == "2000-10-31T01:30:00.000-05:00"
 
     monkeypatch.setattr(
         "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
@@ -103,8 +111,16 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
         lambda *_args, **_kwargs: MockFeed(
             [
-                MockPost(MockPostData("987654322", MockRecord("Hello, world 2!"))),
-                MockPost(MockPostData("987654321", MockRecord("Goodbye, world!"))),
+                MockPost(
+                    MockPostData(
+                        "2000-10-31T02:30:00.000-05:00", MockRecord("Hello, world 2!")
+                    )
+                ),
+                MockPost(
+                    MockPostData(
+                        "2000-10-31T01:30:00.000-05:00", MockRecord("Goodbye, world!")
+                    )
+                ),
             ]
         ),
     )
