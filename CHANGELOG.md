@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.5.1] - 2025-01-26
+
+### Changed
+
+- Minor dependency updates
+
+### Fixed
+
+- Fixed an issue in which posted messages were not being tracked successfully on Bluesky, leading to duplicates
+- Cleaner filtering of reblogs and replies for Bluesky and Mastodon
+- Cleaner logging statements
+
 ## [0.5.0] - 2025-01-19
 
 ### Added

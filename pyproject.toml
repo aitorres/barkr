@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "barkr"
-version = "0.5.0"
+version = "0.5.1"
 description = "Yet another cross-posting tool in Python"
 authors = ["Andrés Ignacio Torres <dev@aitorres.com>"]
 readme = "README.md"
@@ -35,15 +35,13 @@ python = "^3.11, <3.14"
 beautifulsoup4 = "^4.12.3"
 lxml = "^5.3.0"
 mastodon-py = "^1.8.1"
-tweepy = "^4.14.0"
-# NOTE: required per https://github.com/tweepy/tweepy/issues/2177
-standard-imghdr = { version = "^3.13.0", python = ">=3.13" }
-atproto = "^0.0.56"
+tweepy = "^4.15.0"
+atproto = "^0.0.58"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 pytest-cov = "^6.0.0"
-pre-commit = "^4.0.1"
+pre-commit = "^4.1.0"
 flake8 = "^7.1.1"
 black = "^24.10.0"
 mypy = "^1.14.1"
