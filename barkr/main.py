@@ -19,19 +19,21 @@ class Barkr:
     Wrapper for the main loop of the application.
     """
 
-    def __init__(self, connections: list[Connection], retry_interval: int = 15) -> None:
+    def __init__(
+        self, connections: list[Connection], polling_interval: int = 10
+    ) -> None:
         """
         Instantiate a Barkr object with a list of connections, as well as
         internal queues and locks.
 
         :param connections: A list of connections to be used by the Barkr instance
-        :param retry_interval: The interval to wait between retries, in seconds
+        :param polling_interval: The interval to wait between polling requests, in seconds
         """
 
         if not connections:
             raise ValueError("Must provide at least one connection!")
 
-        self.retry_interval: int = retry_interval
+        self.polling_interval: int = polling_interval
 
         logger.info(
             "Initializing Barkr instance with %s connection(s)...", len(connections)
@@ -98,8 +100,8 @@ class Barkr:
 
         logger.info("Starting Barkr!")
 
-        read_thread = Thread(target=wrap_while_true(self.read, self.retry_interval))
-        write_thread = Thread(target=wrap_while_true(self.write, self.retry_interval))
+        read_thread = Thread(target=wrap_while_true(self.read, self.polling_interval))
+        write_thread = Thread(target=wrap_while_true(self.write, self.polling_interval))
 
         read_thread.start()
         write_thread.start()

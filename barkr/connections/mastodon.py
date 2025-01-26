@@ -99,6 +99,7 @@ class MastodonConnection(Connection):
                 id=status["id"], message=BeautifulSoup(status["content"], "lxml").text
             )
             for status in statuses
+            if status["in_reply_to_id"] is None and status["reblog"] is None
         ]
 
     def _post(self, messages: list[Message]) -> list[str]:

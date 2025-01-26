@@ -82,6 +82,14 @@ class BlueskyConnection(Connection):
             for feed_view in user_feed:
                 post = feed_view.post
 
+                # Ignoring reposts
+                if post.viewer is not None and post.viewer.repost is not None:
+                    continue
+
+                # Ignoring replies
+                if post.record.reply is not None:
+                    continue
+
                 if self.min_id is None or datetime.fromisoformat(
                     post.indexed_at
                 ) > datetime.fromisoformat(self.min_id):
