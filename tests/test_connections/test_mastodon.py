@@ -38,7 +38,13 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(
         "barkr.connections.mastodon.Mastodon.account_statuses",
-        lambda *_args, **_kwargs: [{"id": "987654321"}],
+        lambda *_args, **_kwargs: [
+            {
+                "id": "987654321",
+                "reblog": None,
+                "in_reply_to_id": None,
+            }
+        ],
     )
 
     mastodon = MastodonConnection(
@@ -63,8 +69,18 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [
-            {"id": "11223344", "content": "test message 1"},
-            {"id": "55667788", "content": "test message 2"},
+            {
+                "id": "11223344",
+                "content": "test message 1",
+                "reblog": None,
+                "in_reply_to_id": None,
+            },
+            {
+                "id": "55667788",
+                "content": "test message 2",
+                "reblog": None,
+                "in_reply_to_id": None,
+            },
         ],
     )
 
@@ -99,11 +115,29 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [
-            {"id": "12121212", "content": "test message 3"},
-            {"id": "23232323", "content": "test message 4"},
+            {
+                "id": "12121212",
+                "content": "test message 3",
+                "reblog": None,
+                "in_reply_to_id": None,
+            },
+            {
+                "id": "23232323",
+                "content": "test message 4",
+                "reblog": None,
+                "in_reply_to_id": None,
+            },
             {
                 "id": "44554455",
                 "content": "<p>test message 5</p> <p>test message 6</p>",
+                "reblog": None,
+                "in_reply_to_id": None,
+            },
+            {
+                "id": "44554458",
+                "content": "<p>test message 7</p> <p>test message 8</p>",
+                "reblog": None,
+                "in_reply_to_id": "13245678945613",
             },
         ],
     )

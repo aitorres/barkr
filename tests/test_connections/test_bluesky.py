@@ -3,6 +3,7 @@ Module to implement unit tests for the Bluesky connection class
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 import pytest
 
@@ -17,6 +18,7 @@ class MockRecord:
     """
 
     text: str
+    reply: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -27,6 +29,7 @@ class MockPostData:
 
     indexed_at: str
     record: MockRecord
+    viewer: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -130,3 +133,19 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     # Reading again, no new messages since we increased the min_id
     messages = bluesky.read()
     assert not messages
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_args, **_kwargs: MockFeed(
+            [
+                MockPost(
+                    MockPostData(
+                        "2001-10-31T02:30:00.000-05:00",
+                        MockRecord("Hello, world 2!", reply="12345678"),
+                    )
+                ),
+            ]
+        ),
+    )
+    messages = bluesky.read()
+    assert len(messages) == 0
