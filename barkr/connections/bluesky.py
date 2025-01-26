@@ -91,7 +91,7 @@ class BlueskyConnection(Connection):
 
         if messages:
             self.min_id = messages[0].id
-            logger.info("Bluesky (%s) has %s new messages.", self.name, len(user_feed))
+            logger.info("Bluesky (%s) has %s new messages.", self.name, len(messages))
         else:
             logger.info("Bluesky (%s) has no new messages.", self.name)
 
