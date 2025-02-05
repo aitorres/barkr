@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.6.0] - 2025-02-04
+
+### Added
+
+- Implemented Telegram connection with write support to a chat or channel through a Telegram bot
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.5.1] - 2025-01-26
 
 ### Changed
