@@ -37,6 +37,7 @@ lxml = "^5.3.0"
 mastodon-py = "^1.8.1"
 tweepy = "^4.15.0"
 atproto = "^0.0.58"
+python-telegram-bot = "^21.10"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
