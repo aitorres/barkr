@@ -28,7 +28,7 @@ A simple script showcasing how to set up three Mastodon connections with multipl
 
 ```python
 from barkr.main import Barkr
-from barkr.connections.base import ConnectionModes
+from barkr.connections.base import ConnectionMode
 from barkr.connections.mastodon import MastodonConnection
 from barkr.connections.twitter import TwitterConnection
 
@@ -38,7 +38,7 @@ barkr = Barkr(
         # other accounts on write mode, but will not post anything to it.
         MastodonConnection(
             "Read only connection",
-            [ConnectionModes.READ],
+            [ConnectionMode.READ],
             "<ACCESS TOKEN HERE>",
             "<INSTANCE URL HERE>",
         ),
@@ -46,7 +46,7 @@ barkr = Barkr(
         # new posted to this account or queue anything from this account to other ones.
         MastodonConnection(
             "Write only connection",
-            [ConnectionModes.WRITE],
+            [ConnectionMode.WRITE],
             "<ACCESS TOKEN HERE>",
             "<INSTANCE URL HERE>",
         ),
@@ -54,7 +54,7 @@ barkr = Barkr(
         # post new messages from other channels into this one as well.
         MastodonConnection(
             "R/W connection",
-            [ConnectionModes.READ, ConnectionModes.WRITE],
+            [ConnectionMode.READ, ConnectionMode.WRITE],
             "<ACCESS TOKEN HERE>",
             "<INSTANCE URL HERE>",
         ),
@@ -62,7 +62,7 @@ barkr = Barkr(
         # supports write-only mode through the Twitter V2 API
         TwitterConnection(
             "Write only Twitter Connection",
-            [ConnectionModes.WRITE],
+            [ConnectionMode.WRITE],
             "<CONSUMER KEY HERE>",
             "<CONSUMER SECRET HERE>",
             "<ACCESS KEY HERE>",
