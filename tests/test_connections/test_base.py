@@ -5,7 +5,7 @@ and related code.
 
 import pytest
 
-from barkr.connections.base import Connection, ConnectionMode
+from barkr.connections import Connection, ConnectionMode
 from barkr.models.message import Message
 
 

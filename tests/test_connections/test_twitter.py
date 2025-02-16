@@ -6,8 +6,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from barkr.connections.base import ConnectionMode
-from barkr.connections.twitter import TwitterConnection
+from barkr.connections import ConnectionMode, TwitterConnection
 from barkr.models.message import Message
 
 

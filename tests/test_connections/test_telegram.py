@@ -4,8 +4,7 @@ Module to implement unit tests for the Telegram connection class
 
 import pytest
 
-from barkr.connections.base import ConnectionMode
-from barkr.connections.telegram import TelegramConnection
+from barkr.connections import ConnectionMode, TelegramConnection
 
 
 def test_telegram_connection() -> None:

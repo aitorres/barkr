@@ -4,8 +4,7 @@ Module to implement unit tests for the Discord connection class
 
 import pytest
 
-from barkr.connections.base import ConnectionMode
-from barkr.connections.discord import DiscordConnection
+from barkr.connections import ConnectionMode, DiscordConnection
 
 
 def test_discord_connection() -> None:

@@ -28,13 +28,15 @@ A simple script showcasing how to set up three Mastodon connections with multipl
 
 ```python
 from barkr.main import Barkr
-from barkr.connections.base import ConnectionMode
 
-from barkr.connections.bluesky import BlueskyConnection
-from barkr.connections.discord import DiscordConnection
-from barkr.connections.mastodon import MastodonConnection
-from barkr.connections.telegram import TelegramConnection
-from barkr.connections.twitter import TwitterConnection
+from barkr.connections import (
+    ConnectionMode,
+    BlueskyConnection,
+    DiscordConnection,
+    MastodonConnection,
+    TelegramConnection,
+    TwitterConnection,
+)
 
 barkr = Barkr(
     [

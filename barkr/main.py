@@ -7,7 +7,7 @@ to set crossposting among multiple channels.
 import logging
 from threading import Lock, Thread
 
-from barkr.connections.base import Connection, ConnectionMode
+from barkr.connections import Connection, ConnectionMode
 from barkr.models.message import Message
 from barkr.utils import wrap_while_true
 

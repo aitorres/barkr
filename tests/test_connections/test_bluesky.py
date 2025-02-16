@@ -7,8 +7,7 @@ from typing import Optional
 
 import pytest
 
-from barkr.connections.base import ConnectionMode
-from barkr.connections.bluesky import BlueskyConnection
+from barkr.connections import BlueskyConnection, ConnectionMode
 
 
 @dataclass(frozen=True)

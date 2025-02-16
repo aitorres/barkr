@@ -6,8 +6,7 @@ from typing import Any
 
 import pytest
 
-from barkr.connections.base import ConnectionMode
-from barkr.connections.mastodon import MastodonConnection
+from barkr.connections import ConnectionMode, MastodonConnection
 from barkr.models.message import Message
 
 
