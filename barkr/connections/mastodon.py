@@ -23,6 +23,7 @@ class MastodonConnection(Connection):
     """
 
     service: Mastodon
+    min_id: Optional[str]
 
     def __init__(
         self,
@@ -66,7 +67,7 @@ class MastodonConnection(Connection):
             self.account_id, exclude_reblogs=True, exclude_replies=True
         )
         if current_statuses:
-            self.min_id: Optional[str] = current_statuses[0]["id"]
+            self.min_id = current_statuses[0]["id"]
             logger.info("Mastodon (%s) initial min_id: %s", self.name, self.min_id)
         else:
             self.min_id = None
