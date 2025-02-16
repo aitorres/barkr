@@ -32,6 +32,9 @@ class BlueskyConnection(Connection):
         and sets up the initial connection between the client and Bluesky
         for the given user.
 
+        NOTE: it is recommended to use an app password instead of the user's password.
+        ref: https://bsky.app/settings/app-passwords
+
         :param name: The name of the connection
         :param modes: A list of modes for the connection
         :param handle: The handle of the authenticated user

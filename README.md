@@ -29,7 +29,11 @@ A simple script showcasing how to set up three Mastodon connections with multipl
 ```python
 from barkr.main import Barkr
 from barkr.connections.base import ConnectionMode
+
+from barkr.connections.bluesky import BlueskyConnection
+from barkr.connections.discord import DiscordConnection
 from barkr.connections.mastodon import MastodonConnection
+from barkr.connections.telegram import TelegramConnection
 from barkr.connections.twitter import TwitterConnection
 
 barkr = Barkr(
@@ -44,19 +48,19 @@ barkr = Barkr(
         ),
         # Barkr will write queued messages to this account, but will not read anything
         # new posted to this account or queue anything from this account to other ones.
-        MastodonConnection(
+        DiscordConnection(
             "Write only connection",
             [ConnectionMode.WRITE],
-            "<ACCESS TOKEN HERE>",
-            "<INSTANCE URL HERE>",
+            "<BOT TOKEN ID HERE>",
+            "<CHANNEL ID HERE>",
         ),
         # Barkr will read new messages from this account to be queued onto others, and will
         # post new messages from other channels into this one as well.
-        MastodonConnection(
+        BlueskyConnection(
             "R/W connection",
             [ConnectionMode.READ, ConnectionMode.WRITE],
-            "<ACCESS TOKEN HERE>",
-            "<INSTANCE URL HERE>",
+            "<BLUESKY HANDLE HERE>",
+            "<PASSWORD / APP PASSWORD HERE>",
         ),
         # Another example using Twitter -- note that the TwitterConnection only
         # supports write-only mode through the Twitter V2 API
@@ -68,6 +72,13 @@ barkr = Barkr(
             "<ACCESS KEY HERE>",
             "<ACCESS SECRET HERE>",
             "<BEARER TOKEN HERE>",
+        ),
+        # One more, showcasing a Telegram write-only connection
+        TelegramConnection(
+            "Write only Telegram connection",
+            [ConnectionMode.WRITE],
+            "<TELEGRAM BOT TOKEN HERE>",
+            "<TELEGRAM CHAT / CHANNEL ID HERE>",
         ),
     ]
 )
