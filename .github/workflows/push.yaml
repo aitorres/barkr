@@ -27,7 +27,7 @@ jobs:
       - name: Check types with mypy
         run: |
           source .venv/bin/activate
-          mypy .
+          mypy barkr
       - name: Lint code with pylint and flake8
         run: |
           source .venv/bin/activate

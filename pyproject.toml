@@ -34,7 +34,7 @@ classifiers = [
 python = "^3.11, <3.14"
 beautifulsoup4 = "^4.13.3"
 lxml = "^5.3.1"
-mastodon-py = "^1.8.1"
+mastodon-py = "^2.0.0"
 tweepy = "^4.15.0"
 atproto = "^0.0.58"
 python-telegram-bot = "^21.10"
@@ -60,7 +60,7 @@ warn_return_any = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["mastodon.*", "tweepy.*", "atproto.*"]
+module = ["tweepy.*", "atproto.*"]
 follow_untyped_imports = true
 
 [tool.pylint.FORMAT]
