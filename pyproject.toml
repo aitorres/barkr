@@ -38,6 +38,9 @@ mastodon-py = "^2.0.0"
 tweepy = "^4.15.0"
 atproto = "^0.0.58"
 python-telegram-bot = "^21.10"
+discord = "^2.3.2"
+# NOTE: required for discord until a fix is released, see: https://github.com/Rapptz/discord.py/issues/9742
+audioop-lts = { version = "^0.1.0", python = ">=3.13" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
