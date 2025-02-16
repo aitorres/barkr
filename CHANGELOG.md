@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.6.1] - 2025-02-15
+
+### Added
+
+- New Github Actions pipeline to publish new releases directly to PyPI from a clean state, to solve the issue of releases having unneeded, development or test files inside by accident.
+
+### Fixed
+
+- Sample code in the [README](./README.md) file had typos when importing `barkr` modules.
+
+### Changed
+
+- Updated the `mastodon` package to its latest release
+- Other minor dependency updates
+
 ## [0.6.0] - 2025-02-04
 
 ### Added
