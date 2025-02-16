@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.7.0] - 2025-02-15
+
+### Added
+
+- Implement an initial, write-only connection class for Discord.
+
+### Changed
+
+- All connection classes and enums are now exported from `barkr.connections` in addition to their specific submodules for ease of use (e.g. to use `from barkr.connections import MastodonConnection, DiscordConnection` instead of requiring two different import lines)
+- Updated sample code in the [README](./README.md) to showcase all existing connections.
+
+### Fixed
+
+- Minor Python type annotation non-breaking tweaks.
+
 ## [0.6.1] - 2025-02-15
 
 ### Added
