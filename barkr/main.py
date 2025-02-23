@@ -93,6 +93,27 @@ class Barkr:
             with self.message_queues_lock:
                 self.message_queues[connection.name] = []
 
+    def write_message(self, message: Message) -> None:
+        """
+        Write a single message to all connections. Barkr does not need
+        to be running on a loop for this to work.
+
+
+        Useful if your use case does not require a read-write loop,
+        and for testing purposes.
+
+        :param message: The message to be sent
+        """
+
+        logger.info("Writing message to all connections...")
+
+        for connection in self.connections:
+            if ConnectionMode.WRITE in connection.modes:
+                connection.write([message])
+                logger.info("Posted message to %s", connection.name)
+
+        logger.info("Message posted to all connections!")
+
     def start(self) -> None:
         """
         Start the Barkr instance

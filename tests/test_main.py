@@ -139,3 +139,32 @@ def test_barkr_read_write() -> None:
         "TestCon1-TestMsg1",
         "TestCon1-TestMsg2",
     ]
+
+
+def test_barkr_write_message() -> None:
+    """
+    Test the Barkr class's behavior when using the `write_message` method,
+    that does not require the main app to be started or a loop
+    to be running.
+    """
+
+    test_connection_1 = ConnectionMockup("TestCon1", [ConnectionMode.WRITE])
+    test_connection_2 = ConnectionMockup("TestCon2", [ConnectionMode.WRITE])
+    test_connection_3 = ConnectionMockup("TestCon3", [ConnectionMode.READ])
+
+    barkr = Barkr([test_connection_1, test_connection_2, test_connection_3])
+    assert barkr.connections == [
+        test_connection_1,
+        test_connection_2,
+        test_connection_3,
+    ]
+
+    barkr.write_message(Message(id="Idx", message="msg1"))
+    assert test_connection_1.posted_messages == ["msg1"]
+    assert test_connection_2.posted_messages == ["msg1"]
+    assert test_connection_3.posted_messages == []
+
+    barkr.write_message(Message(id="Idx", message="msg2"))
+    assert test_connection_1.posted_messages == ["msg1", "msg2"]
+    assert test_connection_2.posted_messages == ["msg1", "msg2"]
+    assert test_connection_3.posted_messages == []
