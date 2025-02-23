@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.0] - 2025-02-22
+
+### Added
+
+- Implement an initial, read-only connection class for RSS feeds.
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.7.0] - 2025-02-15
 
 ### Added

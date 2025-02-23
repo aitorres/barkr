@@ -34,6 +34,7 @@ from barkr.connections import (
     BlueskyConnection,
     DiscordConnection,
     MastodonConnection,
+    RSSConnection,
     TelegramConnection,
     TwitterConnection,
 )
@@ -82,8 +83,15 @@ barkr = Barkr(
             "<TELEGRAM BOT TOKEN HERE>",
             "<TELEGRAM CHAT / CHANNEL ID HERE>",
         ),
+        # You can also read from an RSS feed!
+        RSSConnection(
+            "Read only RSS connection",
+            [ConnectionMode.READ],
+            "<RSS FEED URL HERE>"
+        ),
     ]
 )
+
 barkr.start()
 ```
 
