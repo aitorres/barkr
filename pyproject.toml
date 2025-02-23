@@ -31,7 +31,7 @@ classifiers = [
 
 
 [tool.poetry.dependencies]
-python = "^3.9, <3.14"
+python = "^3.9.2, <3.14"
 beautifulsoup4 = "^4.13.3"
 lxml = "^5.3.1"
 mastodon-py = "^2.0.0"
