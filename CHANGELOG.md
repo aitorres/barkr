@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.1] - 2025-02-23
+
+### Added
+
+- Support for Python 3.9 and 3.10 (all the way to 3.13)
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.8.0] - 2025-02-22
 
 ### Added
