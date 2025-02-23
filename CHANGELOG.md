@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.2] - 2025-02-23
+
+### Added
+
+- New method on the `Barkr` class to enable posting a message to the existing Connections on a non-blocking way, i.e. not requiring the read-write loop to be started.
+
+### Fixed
+
+- Introduce artificial delay after posting on Bluesky to prevent an error when querying for the new post's indexed datetime
+
+### Changed
+
+- Modified minimum supported Python version from 3.9 to 3.9.2
+
 ## [0.8.1] - 2025-02-23
 
 ### Added
