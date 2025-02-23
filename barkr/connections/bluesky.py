@@ -5,6 +5,7 @@ via their handle and password.
 """
 
 import logging
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -121,6 +122,11 @@ class BlueskyConnection(Connection):
         for message in messages:
             created_record = self.service.send_post(text=message.message)
             created_uri = created_record.uri
+
+            # NOTE: introducing an artificial delay to ensure the post is indexed
+            # before fetching the post details
+            time.sleep(1)
+
             post_details = self.service.get_posts([created_uri]).posts[0]
             indexed_at = post_details.indexed_at
 
