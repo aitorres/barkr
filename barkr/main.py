@@ -153,10 +153,8 @@ class Barkr:
 
         read_thread.start()
         write_thread.start()
-
         logger.info("Barkr started!")
 
         read_thread.join()
         write_thread.join()
-
         logger.info("Barkr exiting!")

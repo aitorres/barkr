@@ -36,4 +36,4 @@ jobs:
       - name: Run tests with pytest
         run: |
           source .venv/bin/activate
-          pytest --cov=barkr --cov-fail-under=80 -vvv
+          pytest --cov=barkr --cov-fail-under=80 --cov-report=term-missing -vvv
