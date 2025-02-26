@@ -19,8 +19,15 @@ class Barkr:
     Wrapper for the main loop of the application.
     """
 
+    polling_interval: int
+    connections: list[Connection]
+    message_queues: dict[str, list[Message]]
+    message_queues_lock: Lock
+
     def __init__(
-        self, connections: list[Connection], polling_interval: int = 10
+        self,
+        connections: list[Connection],
+        polling_interval: int = 10,
     ) -> None:
         """
         Instantiate a Barkr object with a list of connections, as well as
@@ -33,16 +40,17 @@ class Barkr:
         if not connections:
             raise ValueError("Must provide at least one connection!")
 
+        if polling_interval < 1:
+            raise ValueError("Polling interval must be at least 1 second!")
+
         self.polling_interval: int = polling_interval
 
         logger.info(
             "Initializing Barkr instance with %s connection(s)...", len(connections)
         )
-        self.connections: list[Connection] = connections
-        self.message_queues: dict[str, list[Message]] = {
-            connection.name: [] for connection in connections
-        }
-        self.message_queues_lock: Lock = Lock()
+        self.connections = connections
+        self.message_queues = {connection.name: [] for connection in connections}
+        self.message_queues_lock = Lock()
         logger.info("Barkr instance initialized!")
 
     def read(self) -> None:

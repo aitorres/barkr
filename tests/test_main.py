@@ -40,6 +40,19 @@ def test_barkr_no_connections() -> None:
         Barkr([])
 
 
+def test_barkr_invalid_polling_interval() -> None:
+    """
+    Test the Barkr class with an invalid polling interval.
+    A `ValueError` exception is expected.
+    """
+
+    with pytest.raises(ValueError):
+        Barkr([ConnectionMockup("TestCon", [ConnectionMode.READ])], 0)
+
+    with pytest.raises(ValueError):
+        Barkr([ConnectionMockup("TestCon", [ConnectionMode.READ])], -1)
+
+
 def test_barkr_read_only() -> None:
     """
     Test the Barkr class with two read-only connections.
