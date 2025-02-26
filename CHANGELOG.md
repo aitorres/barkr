@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.3] - 2025-02-25
+
+### Added
+
+- New option on the `Barkr` class to set up a "write rate limit", optional and defaults to `None`. If set, `barkr` will only write the specified amount of messages per each polling period, as a safeguard to prevent publishing too many posts in a limited time.
+
+### Changed
+
+- Minor refactor and more validations added to the `Barkr` class
+
 ## [0.8.2] - 2025-02-23
 
 ### Added
