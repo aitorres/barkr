@@ -6,6 +6,7 @@ to set crossposting among multiple channels.
 
 import logging
 from threading import Lock, Thread
+from typing import Optional
 
 from barkr.connections import Connection, ConnectionMode
 from barkr.models.message import Message
@@ -20,6 +21,7 @@ class Barkr:
     """
 
     polling_interval: int
+    write_rate_limit: Optional[int]
     connections: list[Connection]
     message_queues: dict[str, list[Message]]
     message_queues_lock: Lock
@@ -28,13 +30,18 @@ class Barkr:
         self,
         connections: list[Connection],
         polling_interval: int = 10,
+        write_rate_limit: Optional[int] = None,
     ) -> None:
         """
         Instantiate a Barkr object with a list of connections, as well as
         internal queues and locks.
 
+        If a `write_rate_limit` is provided, Barkr will only write up to that
+        many messages per write-thread polling interval.
+
         :param connections: A list of connections to be used by the Barkr instance
         :param polling_interval: The interval to wait between polling requests, in seconds
+        :param write_rate_limit: (optional) The rate limit for writing messages
         """
 
         if not connections:
@@ -43,7 +50,13 @@ class Barkr:
         if polling_interval < 1:
             raise ValueError("Polling interval must be at least 1 second!")
 
+        if write_rate_limit is not None and write_rate_limit < 1:
+            raise ValueError(
+                "If specified, write rate limit must be at least 1 message!"
+            )
+
         self.polling_interval: int = polling_interval
+        self.write_rate_limit: Optional[int] = write_rate_limit
 
         logger.info(
             "Initializing Barkr instance with %s connection(s)...", len(connections)
@@ -84,10 +97,14 @@ class Barkr:
         """
 
         for connection in self.connections:
+            max_amount: int = self.write_rate_limit or len(
+                self.message_queues[connection.name]
+            )
+
             # Writing is only allowed for connections with the WRITE mode
             if ConnectionMode.WRITE in connection.modes:
                 with self.message_queues_lock:
-                    messages = self.message_queues[connection.name]
+                    messages = self.message_queues[connection.name][:max_amount]
 
                     if messages:
                         connection.write(messages)
@@ -97,9 +114,11 @@ class Barkr:
                             connection.name,
                         )
 
-            # Clear the queue for the current connection
+            # Clear sent messages from the queue for the current connection
             with self.message_queues_lock:
-                self.message_queues[connection.name] = []
+                self.message_queues[connection.name] = self.message_queues[
+                    connection.name
+                ][max_amount:]
 
     def write_message(self, message: Message) -> None:
         """

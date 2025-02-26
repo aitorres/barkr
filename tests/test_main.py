@@ -53,6 +53,19 @@ def test_barkr_invalid_polling_interval() -> None:
         Barkr([ConnectionMockup("TestCon", [ConnectionMode.READ])], -1)
 
 
+def test_barkr_invalid_write_rate_limit() -> None:
+    """
+    Test the Barkr class with an invalid write rate limit.
+    A `ValueError` exception is expected.
+    """
+
+    with pytest.raises(ValueError):
+        Barkr([ConnectionMockup("TestCon", [ConnectionMode.READ])], 10, 0)
+
+    with pytest.raises(ValueError):
+        Barkr([ConnectionMockup("TestCon", [ConnectionMode.READ])], 10, -1)
+
+
 def test_barkr_read_only() -> None:
     """
     Test the Barkr class with two read-only connections.
@@ -181,3 +194,84 @@ def test_barkr_write_message() -> None:
     assert test_connection_1.posted_messages == ["msg1", "msg2"]
     assert test_connection_2.posted_messages == ["msg1", "msg2"]
     assert test_connection_3.posted_messages == []
+
+
+def test_barkr_write_rate_limit() -> None:
+    """
+    Tests the Barkr's class behavior when setting up a write rate limit.
+    """
+
+    test_connection_0 = ConnectionMockup("TestCon0", [ConnectionMode.READ])
+    test_connection_1 = ConnectionMockup("TestCon1", [ConnectionMode.WRITE])
+    test_connection_2 = ConnectionMockup("TestCon2", [ConnectionMode.WRITE])
+
+    barkr = Barkr(
+        [test_connection_0, test_connection_1, test_connection_2], write_rate_limit=1
+    )
+    assert barkr.connections == [
+        test_connection_0,
+        test_connection_1,
+        test_connection_2,
+    ]
+
+    # enqueuing 2 messages
+    barkr.read()
+
+    assert barkr.message_queues == {
+        "TestCon0": [],
+        "TestCon1": [
+            Message(id="TestCon0-Id1", message="TestCon0-TestMsg1"),
+            Message(id="TestCon0-Id2", message="TestCon0-TestMsg2"),
+        ],
+        "TestCon2": [
+            Message(id="TestCon0-Id1", message="TestCon0-TestMsg1"),
+            Message(id="TestCon0-Id2", message="TestCon0-TestMsg2"),
+        ],
+    }
+
+    # writing, this should only write 1 message and leave 1 in the queue
+    barkr.write()
+    assert barkr.message_queues == {
+        "TestCon0": [],
+        "TestCon1": [
+            Message(id="TestCon0-Id2", message="TestCon0-TestMsg2"),
+        ],
+        "TestCon2": [
+            Message(id="TestCon0-Id2", message="TestCon0-TestMsg2"),
+        ],
+    }
+    assert test_connection_1.posted_messages == ["TestCon0-TestMsg1"]
+    assert test_connection_2.posted_messages == ["TestCon0-TestMsg1"]
+    assert test_connection_0.posted_messages == []
+
+    # writing again, this should write the last message
+    barkr.write()
+    assert barkr.message_queues == {
+        "TestCon0": [],
+        "TestCon1": [],
+        "TestCon2": [],
+    }
+    assert test_connection_1.posted_messages == [
+        "TestCon0-TestMsg1",
+        "TestCon0-TestMsg2",
+    ]
+    assert test_connection_2.posted_messages == [
+        "TestCon0-TestMsg1",
+        "TestCon0-TestMsg2",
+    ]
+
+    # one more, should not write anything new
+    barkr.write()
+    assert barkr.message_queues == {
+        "TestCon0": [],
+        "TestCon1": [],
+        "TestCon2": [],
+    }
+    assert test_connection_1.posted_messages == [
+        "TestCon0-TestMsg1",
+        "TestCon0-TestMsg2",
+    ]
+    assert test_connection_2.posted_messages == [
+        "TestCon0-TestMsg1",
+        "TestCon0-TestMsg2",
+    ]
