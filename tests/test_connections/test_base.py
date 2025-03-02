@@ -158,6 +158,8 @@ def test_connection_avoids_infinite_loops(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(connection_a, "_fetch", mock_fetch_a)
 
     messages = connection_a.read()
+    assert len(messages) == 3
+    assert [message.id for message in messages] == ["1", "2", "3"]
 
     # Second mock: Connection B posts messages read from A
     def mock_post_b(messages: list[Message]) -> list[str]:
@@ -182,3 +184,47 @@ def test_connection_avoids_infinite_loops(monkeypatch: pytest.MonkeyPatch) -> No
     # We shouldn't bring anything here and this should stop the loop
     messages = connection_b.read()
     assert not messages
+
+
+def test_connection_handles_read_exceptions(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test that the Connection class can recover from an exception
+    when attempting to read messages.
+    """
+
+    connection = Connection("Read", [ConnectionMode.READ])
+
+    attempts = 0
+
+    def mock_fetch_a() -> list[Message]:
+        nonlocal attempts
+        attempts += 1
+
+        if attempts == 1:
+            raise ValueError("Test exception")
+        return [
+            Message(id="1", message="test message 1"),
+            Message(id="2", message="test message 2"),
+            Message(id="3", message="test message 3"),
+        ]
+
+    monkeypatch.setattr(connection, "_fetch", mock_fetch_a)
+
+    # First attempt will raise an exception that will be caught
+    # with no messages returned
+    messages = connection.read()
+    assert not messages
+
+    # Second attempt will return the messages
+    messages = connection.read()
+    assert len(messages) == 3
+    assert [message.id for message in messages] == ["1", "2", "3"]
+
+    # But if it's a NotImplementedError, it should be raised
+    def mock_fetch_b() -> list[Message]:
+        raise NotImplementedError("Test NotImplementedError")
+
+    monkeypatch.setattr(connection, "_fetch", mock_fetch_b)
+
+    with pytest.raises(NotImplementedError):
+        connection.read()

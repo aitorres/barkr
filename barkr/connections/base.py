@@ -64,6 +64,9 @@ class Connection:
         try:
             messages: list[Message] = self._fetch()
         except Exception as e:  # pylint: disable=broad-except
+            if isinstance(e, NotImplementedError):
+                raise
+
             logger.error("Error fetching messages from connection %s: %s", self.name, e)
             return []
 
