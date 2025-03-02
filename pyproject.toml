@@ -34,7 +34,7 @@ classifiers = [
 python = "^3.9.2, <3.14"
 beautifulsoup4 = "^4.13.3"
 lxml = "^5.3.1"
-mastodon-py = "^2.0.0"
+mastodon-py = "^2.0.1"
 tweepy = "^4.15.0"
 atproto = "^0.0.59"
 python-telegram-bot = "^21.11.1"
@@ -42,7 +42,7 @@ discord-py = "^2.5.0"
 feedparser = "^6.0.11"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.4"
+pytest = "^8.3.5"
 pytest-cov = "^6.0.0"
 pre-commit = "^4.1.0"
 flake8 = "^7.1.2"
