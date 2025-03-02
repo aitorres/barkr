@@ -32,6 +32,10 @@ class Connection:
     of messages already posted by one connection on subsequent fetches.
     """
 
+    name: str
+    modes: list[ConnectionMode]
+    posted_message_ids: set[str]
+
     def __init__(self, name: str, modes: list[ConnectionMode]) -> None:
         """
         Initializes the connection with a name and a list of modes
@@ -43,9 +47,9 @@ class Connection:
         if not modes:
             raise ValueError("At least one mode must be provided for the connection.")
 
-        self.name: str = name
-        self.modes: list[ConnectionMode] = modes
-        self.posted_message_ids: set[str] = set()
+        self.name = name
+        self.modes = modes
+        self.posted_message_ids = set()
 
     def read(self) -> list[Message]:
         """
@@ -57,7 +61,11 @@ class Connection:
         if ConnectionMode.READ not in self.modes:
             return []
 
-        messages: list[Message] = self._fetch()
+        try:
+            messages: list[Message] = self._fetch()
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error fetching messages from connection %s: %s", self.name, e)
+            return []
 
         new_messages: list[Message] = []
         for message in messages:
