@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.4] - 2025-03-01
+
+### Fixed
+
+- Gracefully handles server errors when trying to read new messages from connections
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.8.3] - 2025-02-25
 
 ### Added
