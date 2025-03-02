@@ -5,15 +5,18 @@ via their access token.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 from bs4 import BeautifulSoup
 from mastodon import Mastodon
+from mastodon.errors import MastodonNetworkError
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.models.message import Message
 
 logger = logging.getLogger()
+
+MASTODON_WRITE_RETRIES: Final[int] = 3
 
 
 class MastodonConnection(Connection):
@@ -55,6 +58,7 @@ class MastodonConnection(Connection):
         self.service = Mastodon(
             access_token=access_token,
             api_base_url=instance_url,
+            request_timeout=10,
         )
         self.account_id: str = self.service.account_verify_credentials()["id"]
         logger.info(
@@ -114,7 +118,32 @@ class MastodonConnection(Connection):
         posted_message_ids: list[str] = []
 
         for message in messages:
-            posted_message = self.service.status_post(message.message)
+            attempts = 0
+
+            while attempts < MASTODON_WRITE_RETRIES:
+                try:
+                    posted_message = self.service.status_post(message.message)
+                except MastodonNetworkError as e:
+                    if attempts < MASTODON_WRITE_RETRIES - 1:
+                        logger.warning(
+                            "Mastodon network error posting status to "
+                            "Mastodon (%s), will retry. Error: %s",
+                            self.name,
+                            e,
+                        )
+                        attempts += 1
+                    else:
+                        logger.error(
+                            "Failed to post status to Mastodon (%s) "
+                            "after %s attempts: %s",
+                            self.name,
+                            MASTODON_WRITE_RETRIES,
+                            e,
+                        )
+                        raise
+                else:
+                    break
+
             posted_message_ids.append(posted_message["id"])
             logger.info(
                 "Posted status to Mastodon (%s): %s", self.name, message.message
