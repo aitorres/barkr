@@ -7,6 +7,8 @@ jobs:
   build:
     name: Build new release
     runs-on: ubuntu-latest
+    outputs:
+      changelog_content: ${{ steps.changelog_content.outputs.stdout }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -65,6 +67,7 @@ jobs:
   release:
     name: Create GitHub Release
     needs:
+      - build
       - publish
     runs-on: ubuntu-latest
     steps:
@@ -80,4 +83,4 @@ jobs:
           release_name: ${{ github.ref }}
           draft: false
           prerelease: false
-          body: ${{ steps.changelog_content.outputs.stdout }}
+          body: ${{ needs.build.outputs.changelog_content.outputs.stdout }}
