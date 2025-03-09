@@ -228,3 +228,42 @@ def test_connection_handles_read_exceptions(monkeypatch: pytest.MonkeyPatch) -> 
 
     with pytest.raises(NotImplementedError):
         connection.read()
+
+
+def test_connection_does_not_write_empty_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Test that the Connection class succesfully skips any messages
+    that are 'empty' and can't be posted
+    """
+
+    connection = Connection("Write", [ConnectionMode.WRITE])
+    assert not connection.posted_message_ids
+
+    # Mock the _post method to add the message ID to the posted_message_ids set
+    # and return the message ID
+    posted_message_ids = []
+
+    def mock_post(messages: list[Message]) -> list[str]:
+        for message in messages:
+            posted_message_ids.append(message.id)
+        return posted_message_ids
+
+    monkeypatch.setattr(connection, "_post", mock_post)
+
+    # Post an empty message
+    connection.write([Message(id="1", message="")])
+    assert not posted_message_ids
+    assert not connection.posted_message_ids
+
+    # Let's try a mix
+    connection.write(
+        [
+            Message(id="1", message=""),
+            Message(id="2", message="test message 2"),
+            Message(id="3", message="test message 3"),
+        ]
+    )
+    assert posted_message_ids == ["2", "3"]
+    assert connection.posted_message_ids == {"2", "3"}

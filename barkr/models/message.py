@@ -20,3 +20,17 @@ class Message:
 
     id: str
     message: str
+
+    def has_content(self) -> bool:
+        """
+        Check if the message has content and therefore can be published.
+
+        At this point, the only check is whether the message is empty or not.
+        In the future, as Messages grow in complexity, this method may be
+        extended to check for other conditions (e.g. accounting for
+        a message with no text but with an image).
+
+        :return: True if the message has content, False otherwise
+        """
+
+        return bool(self.message)

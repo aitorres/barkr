@@ -89,7 +89,25 @@ class Connection:
         if ConnectionMode.WRITE not in self.modes:
             return
 
-        posted_ids: list[str] = self._post(messages)
+        # Discarding any empty messages
+        messages_with_content = [
+            message for message in messages if message.has_content()
+        ]
+
+        if not messages_with_content:
+            logger.warning(
+                "All messages are empty (no content) for connection %s", self.name
+            )
+            return
+
+        if len(messages_with_content) != len(messages):
+            logger.warning(
+                "Discarded %s empty messages for connection %s",
+                len(messages) - len(messages_with_content),
+                self.name,
+            )
+
+        posted_ids: list[str] = self._post(messages_with_content)
         self.posted_message_ids.update(posted_ids)
 
     def _fetch(self) -> list[Message]:
