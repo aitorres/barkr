@@ -1,9 +1,14 @@
-
 # Change Log
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
+
+## [0.8.6] - 2025-03-09
+
+### Fixed
+
+- Bluesky posts that contain a single link and multiple words are now being reconstructed successfully.
 
 ## [0.8.5] - 2025-03-08
 
