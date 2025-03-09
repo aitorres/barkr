@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.5] - 2025-03-08
+
+### Fixed
+
+- Connections no longer attempt to publish a post with an empty message
+- Bluesky posts that contain a single link (which is trimmed when stored on  `atproto` and stored as an embed) are now being reconstructed successfully.
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.8.4] - 2025-03-01
 
 ### Fixed
