@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from atproto import Client
+from atproto_client.models import AppBskyEmbedExternal  # type: ignore
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.models.message import Message
@@ -97,9 +98,17 @@ class BlueskyConnection(Connection):
                 if self.min_id is None or datetime.fromisoformat(
                     post.indexed_at
                 ) > datetime.fromisoformat(self.min_id):
-                    messages.append(
-                        Message(id=post.indexed_at, message=post.record.text)
-                    )
+                    record = post.record
+                    if (
+                        embed := record.embed
+                    ) is not None and embed.py_type == "app.bsky.embed.external":
+                        text = self._process_external_embed_text(
+                            record.text, embed.external
+                        )
+                    else:
+                        text = record.text
+
+                    messages.append(Message(id=post.indexed_at, message=text))
 
         if messages:
             self.min_id = messages[0].id
@@ -142,3 +151,32 @@ class BlueskyConnection(Connection):
             posted_message_ids.append(indexed_at)
 
         return posted_message_ids
+
+    def _process_external_embed_text(
+        self, text: str, external_embed: AppBskyEmbedExternal.External
+    ):
+        """
+        Handles the special case where a Bluesky post contains a link to an external
+        resources that is not fully rendered as part of the text.
+
+        Leveraging the External Embed object, reconstructs the text to include
+        the full URL to the resource.
+
+        For example, when posting the URL
+        https://open.spotify.com/track/0ElVpg9XIswx3XWs6kUj6a?si=0015d86587524ef9
+        the text is trimmed to open.spotify.com/track/0ElVpg... but the
+        External Embed object contains the full URL.
+
+        :param text: The original text of the post
+        :param external_embed: The External Embed object containing the link
+        :return: The reconstructed text with the full URL
+        """
+
+        url = external_embed.uri
+
+        return "".join(
+            [
+                (word if not word.replace("...", "") in url else url)
+                for word in text.split()
+            ]
+        )

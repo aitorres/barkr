@@ -11,6 +11,27 @@ from barkr.connections import BlueskyConnection, ConnectionMode
 
 
 @dataclass(frozen=True)
+class MockExternal:
+    """
+    Mock class to simulate a Bluesky external embed
+    """
+
+    title: str
+    uri: str
+    description: str
+
+
+@dataclass(frozen=True)
+class MockEmbed:
+    """
+    Mock class to simulate a Bluesky embed
+    """
+
+    external: Optional[MockExternal] = None
+    py_type: str = "app.bsky.embed.external"
+
+
+@dataclass(frozen=True)
 class MockRecord:
     """
     Mock class to simulate a Bluesky record
@@ -18,6 +39,7 @@ class MockRecord:
 
     text: str
     reply: Optional[str] = None
+    embed: Optional[MockEmbed] = None
 
 
 @dataclass(frozen=True)
@@ -148,3 +170,66 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     messages = bluesky.read()
     assert len(messages) == 0
+
+
+def test_bluesky_reconstructs_external_embeds_successfully(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Test that the Bluesky connection reconstructs external embeds successfully.
+    The test case reproduces a real-world scenario where, when a user posts a message
+    that only contains a link, Bluesky can trim the actual URL in the post's message
+    and include the full URL in the external embed.
+
+    Since we're ignoring the embed in the generic Message, we need to reconstruct
+    the URL on the message's text.
+    """
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.login",
+        lambda *_: None,
+    )
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_: MockFeed([]),
+    )
+
+    bsky = BlueskyConnection(
+        "BlueskyClass",
+        [ConnectionMode.READ],
+        "test_handle",
+        "test_password",
+    )
+    assert bsky.name == "BlueskyClass"
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_args, **_kwargs: MockFeed(
+            [
+                MockPost(
+                    MockPostData(
+                        "2000-10-31T01:30:00.000-05:00",
+                        MockRecord(
+                            "open.spotify.com/track/0ElVpg...",
+                            embed=MockEmbed(
+                                external=MockExternal(
+                                    title="Zombieboy",
+                                    uri=(
+                                        "https://open.spotify.com/track/0ElVp"
+                                        "g9XIswx3XWs6kUj6a?si=0015d86587524ef9"
+                                    ),
+                                    description="Lady Gaga · MAYHEM · Song · 2025",
+                                )
+                            ),
+                        ),
+                    )
+                ),
+            ]
+        ),
+    )
+    messages = bsky.read()
+    assert len(messages) == 1
+    assert messages[0].message == (
+        "https://open.spotify.com/track/0ElVpg9XIswx3XWs6kUj6a?si=0015d86587524ef9"
+    )
