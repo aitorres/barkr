@@ -32,6 +32,11 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
+      - name: Extract changelog content for release
+        uses: mathiasvr/command-output@v2.0.0
+        id: changelog_content
+        with:
+          run: awk '/^## /{if (p) exit; p=1; next} p' CHANGELOG.md
 
   publish:
     name: Publish to PyPI
@@ -75,3 +80,4 @@ jobs:
           release_name: ${{ github.ref }}
           draft: false
           prerelease: false
+          body: ${{ steps.changelog_content.outputs.stdout }}
