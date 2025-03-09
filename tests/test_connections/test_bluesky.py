@@ -233,3 +233,38 @@ def test_bluesky_reconstructs_external_embeds_successfully(
     assert messages[0].message == (
         "https://open.spotify.com/track/0ElVpg9XIswx3XWs6kUj6a?si=0015d86587524ef9"
     )
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_args, **_kwargs: MockFeed(
+            [
+                MockPost(
+                    MockPostData(
+                        "2001-10-31T01:30:00.000-05:00",
+                        MockRecord(
+                            (
+                                "GFOTY is always refreshing, "
+                                "in a way open.spotify.com/track/3R9Pjd..."
+                            ),
+                            embed=MockEmbed(
+                                external=MockExternal(
+                                    title="spin song",
+                                    uri=(
+                                        "https://open.spotify.com/track/"
+                                        "3R9PjdxlGKwGzo7ai89L8r?si=b7480cdf279e4fd8"
+                                    ),
+                                    description="GFOTY · INFLUENZER · Song · 2025",
+                                )
+                            ),
+                        ),
+                    )
+                ),
+            ]
+        ),
+    )
+    messages = bsky.read()
+    assert len(messages) == 1
+    assert messages[0].message == (
+        "GFOTY is always refreshing, in a way "
+        "https://open.spotify.com/track/3R9PjdxlGKwGzo7ai89L8r?si=b7480cdf279e4fd8"
+    )

@@ -174,9 +174,16 @@ class BlueskyConnection(Connection):
 
         url = external_embed.uri
 
-        return "".join(
-            [
-                (word if not word.replace("...", "") in url else url)
-                for word in text.split()
-            ]
-        )
+        # We now want to find the word in the text that is contained
+        # in the URL, and we only care for the _longest_ word
+        # if there are multiple matches
+        matching_word = ""
+        for word in text.split():
+            if word.replace("...", "") in url:
+                if len(word) > len(matching_word):
+                    matching_word = word
+
+        if not matching_word:
+            return text
+
+        return text.replace(matching_word, url)
