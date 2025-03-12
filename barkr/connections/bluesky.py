@@ -10,7 +10,13 @@ from datetime import datetime
 from typing import Optional
 
 from atproto import Client
-from atproto_client.models import AppBskyEmbedExternal  # type: ignore
+from atproto_client.models import (  # type: ignore
+    AppBskyEmbedExternal,
+    AppBskyEmbedImages,
+    AppBskyEmbedRecord,
+    AppBskyEmbedRecordWithMedia,
+    AppBskyEmbedVideo,
+)
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.models.message import Message
@@ -99,12 +105,8 @@ class BlueskyConnection(Connection):
                     post.indexed_at
                 ) > datetime.fromisoformat(self.min_id):
                     record = post.record
-                    if (
-                        embed := record.embed
-                    ) is not None and embed.py_type == "app.bsky.embed.external":
-                        text = self._process_external_embed_text(
-                            record.text, embed.external
-                        )
+                    if (embed := record.embed) is not None:
+                        text = self._process_text_with_embed(record.text, embed)
                     else:
                         text = record.text
 
@@ -152,27 +154,44 @@ class BlueskyConnection(Connection):
 
         return posted_message_ids
 
-    def _process_external_embed_text(
-        self, text: str, external_embed: AppBskyEmbedExternal.External
-    ):
+    def _process_text_with_embed(
+        self,
+        text: str,
+        embed: (
+            AppBskyEmbedExternal.Main
+            | AppBskyEmbedRecord.Main
+            | AppBskyEmbedImages.Main
+            | AppBskyEmbedVideo.Main
+            | AppBskyEmbedRecordWithMedia.Main
+            | None
+        ),
+    ) -> str:
         """
-        Handles the special case where a Bluesky post contains a link to an external
+        Handles the special case where a Bluesky post contains a link to an embedded
         resources that is not fully rendered as part of the text.
 
-        Leveraging the External Embed object, reconstructs the text to include
+        Leveraging the Embed object, reconstructs the text to include
         the full URL to the resource.
 
         For example, when posting the URL
         https://open.spotify.com/track/0ElVpg9XIswx3XWs6kUj6a?si=0015d86587524ef9
         the text is trimmed to open.spotify.com/track/0ElVpg... but the
-        External Embed object contains the full URL.
+        Embed object contains the full URL.
 
         :param text: The original text of the post
-        :param external_embed: The External Embed object containing the link
+        :param embed: The Embed object containing the link
         :return: The reconstructed text with the full URL
         """
 
-        url = external_embed.uri
+        if embed is None:
+            return text
+
+        # Depending on the type of embed, we get the URL
+        # from the corresponding field
+        if isinstance(embed, AppBskyEmbedExternal.Main):
+            url = embed.external.uri
+        else:
+            return text
 
         # We now want to find the word in the text that is contained
         # in the URL, and we only care for the _longest_ word

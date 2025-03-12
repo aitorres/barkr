@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import pytest
+from atproto_client.models import AppBskyEmbedExternal  # type: ignore
 
 from barkr.connections import BlueskyConnection, ConnectionMode
 
@@ -22,13 +23,12 @@ class MockExternal:
 
 
 @dataclass(frozen=True)
-class MockEmbed:
+class MockExternalEmbed:
     """
-    Mock class to simulate a Bluesky embed
+    Mock class to simulate a Bluesky external embed
     """
 
     external: Optional[MockExternal] = None
-    py_type: str = "app.bsky.embed.external"
 
 
 @dataclass(frozen=True)
@@ -39,7 +39,7 @@ class MockRecord:
 
     text: str
     reply: Optional[str] = None
-    embed: Optional[MockEmbed] = None
+    embed: Optional[MockExternalEmbed] = None
 
 
 @dataclass(frozen=True)
@@ -172,18 +172,22 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(messages) == 0
 
 
-def test_bluesky_reconstructs_external_embeds_successfully(
+def test_bluesky_reconstructs_embeds_successfully(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
-    Test that the Bluesky connection reconstructs external embeds successfully.
+    Test that the Bluesky connection reconstructs embeds successfully.
     The test case reproduces a real-world scenario where, when a user posts a message
     that only contains a link, Bluesky can trim the actual URL in the post's message
-    and include the full URL in the external embed.
+    and include the full URL in the embed.
 
     Since we're ignoring the embed in the generic Message, we need to reconstruct
     the URL on the message's text.
     """
+
+    # We need to patch `isinstance` to make our mocked classes work,
+    # so we preserve the original `isinstance` function
+    original_isinstance = isinstance
 
     monkeypatch.setattr(
         "barkr.connections.bluesky.Client.login",
@@ -204,6 +208,16 @@ def test_bluesky_reconstructs_external_embeds_successfully(
     assert bsky.name == "BlueskyClass"
 
     monkeypatch.setattr(
+        "builtins.isinstance",
+        lambda obj, cls: (
+            True
+            if cls == AppBskyEmbedExternal.Main
+            and original_isinstance(obj, MockExternalEmbed)
+            else original_isinstance(obj, cls)
+        ),
+    )
+
+    monkeypatch.setattr(
         "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
         lambda *_args, **_kwargs: MockFeed(
             [
@@ -212,7 +226,7 @@ def test_bluesky_reconstructs_external_embeds_successfully(
                         "2000-10-31T01:30:00.000-05:00",
                         MockRecord(
                             "open.spotify.com/track/0ElVpg...",
-                            embed=MockEmbed(
+                            embed=MockExternalEmbed(
                                 external=MockExternal(
                                     title="Zombieboy",
                                     uri=(
@@ -246,7 +260,7 @@ def test_bluesky_reconstructs_external_embeds_successfully(
                                 "GFOTY is always refreshing, "
                                 "in a way open.spotify.com/track/3R9Pjd..."
                             ),
-                            embed=MockEmbed(
+                            embed=MockExternalEmbed(
                                 external=MockExternal(
                                     title="spin song",
                                     uri=(
