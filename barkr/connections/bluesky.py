@@ -7,7 +7,7 @@ via their handle and password.
 import logging
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 from atproto import Client
 from atproto_client.models import (  # type: ignore
@@ -157,14 +157,15 @@ class BlueskyConnection(Connection):
     def _process_text_with_embed(
         self,
         text: str,
-        embed: (
-            AppBskyEmbedExternal.Main
-            | AppBskyEmbedRecord.Main
-            | AppBskyEmbedImages.Main
-            | AppBskyEmbedVideo.Main
-            | AppBskyEmbedRecordWithMedia.Main
-            | None
-        ),
+        embed: Optional[
+            Union[
+                AppBskyEmbedExternal.Main,
+                AppBskyEmbedRecord.Main,
+                AppBskyEmbedImages.Main,
+                AppBskyEmbedVideo.Main,
+                AppBskyEmbedRecordWithMedia.Main,
+            ]
+        ],
     ) -> str:
         """
         Handles the special case where a Bluesky post contains a link to an embedded
