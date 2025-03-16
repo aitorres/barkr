@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.7] - 2025-03-15
+
+### Fixed
+
+- RSS connections will no longer attempt to publish all old entries on connection init.
+
+### Changed
+
+- Minor refactor of the Bluesky connection to handle post embeds.
+- Minor dependency updates.
+
 ## [0.8.6] - 2025-03-09
 
 ### Fixed
