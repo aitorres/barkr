@@ -28,7 +28,12 @@ from barkr.models.message import Message
 
 logger = logging.getLogger()
 
-REQUESTS_EMBED_GET_TIMEOUT: Final[int] = 2
+REQUESTS_EMBED_GET_TIMEOUT: Final[int] = 3
+REQUESTS_HEADERS: Final[dict[str, str]] = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:20.0) " "Gecko/20100101 Firefox/20.0"
+    )
+}
 
 
 class BlueskyConnection(Connection):
@@ -138,14 +143,10 @@ class BlueskyConnection(Connection):
         posted_message_ids: list[str] = []
 
         for message in messages:
-            post_embed = self._create_embed_for_post(message.message)
-            if post_embed:
-                embed, facet = post_embed
-                created_record = self.service.send_post(
-                    text=message.message, embed=embed, facets=[facet]
-                )
-            else:
-                created_record = self.service.send_post(text=message.message)
+            embed, facets = self._generate_post_embed_and_facets(message.message)
+            created_record = self.service.send_post(
+                text=message.message, embed=embed, facets=facets if facets else None
+            )
             created_uri = created_record.uri
 
             # NOTE: introducing an artificial delay to ensure the post is indexed
@@ -168,68 +169,93 @@ class BlueskyConnection(Connection):
 
         return posted_message_ids
 
-    def _create_embed_for_post(
+    def _generate_post_embed_and_facets(
         self, text: str
-    ) -> Optional[tuple[AppBskyEmbedExternal.Main, AppBskyRichtextFacet.Main]]:
+    ) -> tuple[Optional[AppBskyEmbedExternal.Main], list[AppBskyRichtextFacet.Main]]:
         """
         If a link is present on the text for a post to be created,
         creates an Embed object for the link.
 
         This allows Bluesky to display the link as a preview.
 
+        Also generate facets for the link to be used in the post.
+
         :param text: The text of the post
-        :return: An Embed object if a link is present, None otherwise
+        :return: A tuple containing the Embed object and a list of facets
         """
 
         # Extract the first link from the text
         urls = re.findall(r"http[s]?://[^\s]+", text)
 
-        if not urls:
-            return None
+        embed = None
+        facets: list[AppBskyRichtextFacet.Main] = []
 
         for url in urls:
             # Hit the URL to check if it is valid and extract title and description
             try:
                 # Using a very short timeout, we don't want to spend too much time here
-                response = requests.get(url, timeout=REQUESTS_EMBED_GET_TIMEOUT)
+                response = requests.get(
+                    url, timeout=REQUESTS_EMBED_GET_TIMEOUT, headers=REQUESTS_HEADERS
+                )
             except requests.RequestException:
                 continue
 
             if response.status_code == 200:
-                # Parse the response to extract title and description
-                soup = BeautifulSoup(response.content, "html.parser")
-                title = soup.title.string if soup.title else urlparse(url).netloc
-                parsed_description = soup.find("meta", attrs={"name": "description"})
-
-                if isinstance(parsed_description, Tag):
-                    description = parsed_description["content"]
-                else:
+                if embed is None:
+                    # Parse the response to extract title, description and image
+                    soup = BeautifulSoup(response.content, "html.parser")
+                    title = soup.title.string if soup.title else urlparse(url).netloc
                     description = url
+                    thumbnail_blob = None
 
-                # Return the Embed object
-                embed = AppBskyEmbedExternal.Main(
-                    external=AppBskyEmbedExternal.External(
-                        uri=url,
-                        title=title,
-                        description=description,
+                    # Extract the description from the meta tag
+                    parsed_description = soup.find(
+                        "meta", attrs={"name": "description"}
+                    )
+                    if isinstance(parsed_description, Tag):
+                        description = parsed_description["content"]
+
+                    # Extract the image from the meta tag
+                    og_image = soup.find("meta", attrs={"property": "og:image"})
+                    if isinstance(og_image, Tag):
+                        image = og_image["content"]
+
+                        if isinstance(image, list):
+                            image = image[0]
+
+                        img_data = requests.get(
+                            image,
+                            timeout=REQUESTS_EMBED_GET_TIMEOUT,
+                            headers=REQUESTS_HEADERS,
+                        ).content
+                        thumbnail_blob = self.service.upload_blob(img_data).blob
+
+                    # Prepare the Embed object
+                    embed = AppBskyEmbedExternal.Main(
+                        external=AppBskyEmbedExternal.External(
+                            uri=url,
+                            title=title,
+                            description=description,
+                            thumb=thumbnail_blob,
+                        )
+                    )
+
+                # Create a facet for the link
+                facets.append(
+                    AppBskyRichtextFacet.Main(
+                        features=[
+                            AppBskyRichtextFacet.Link(
+                                uri=url,
+                            )
+                        ],
+                        index=AppBskyRichtextFacet.ByteSlice(
+                            byte_start=text.index(url),
+                            byte_end=text.index(url) + len(url),
+                        ),
                     )
                 )
 
-                facet = AppBskyRichtextFacet.Main(
-                    features=[
-                        AppBskyRichtextFacet.Link(
-                            uri=url,
-                        )
-                    ],
-                    index=AppBskyRichtextFacet.ByteSlice(
-                        byte_start=text.index(url),
-                        byte_end=text.index(url) + len(url),
-                    ),
-                )
-                return embed, facet
-
-        # We couldn't find a working link!
-        return None
+        return embed, facets
 
     def _process_text_with_embed(
         self,
