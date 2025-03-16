@@ -40,6 +40,7 @@ atproto = "^0.0.59"
 python-telegram-bot = "^21.11.1"
 discord-py = "^2.5.2"
 feedparser = "^6.0.11"
+requests = "^2.32.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
@@ -51,6 +52,7 @@ mypy = "^1.15.0"
 pylint = "^3.3.5"
 isort = "^6.0.1"
 types-beautifulsoup4 = "^4.12.0.20250204"
+types-requests = "^2.32.0.20250306"
 
 [tool.isort]
 src_paths = ["barkr", "tests"]
