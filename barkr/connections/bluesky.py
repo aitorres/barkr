@@ -5,10 +5,13 @@ via their handle and password.
 """
 
 import logging
+import re
 import time
 from datetime import datetime
-from typing import Optional, Union
+from typing import Final, Optional, Union
+from urllib.parse import urlparse
 
+import requests
 from atproto import Client
 from atproto_client.models import (  # type: ignore
     AppBskyEmbedExternal,
@@ -16,12 +19,16 @@ from atproto_client.models import (  # type: ignore
     AppBskyEmbedRecord,
     AppBskyEmbedRecordWithMedia,
     AppBskyEmbedVideo,
+    AppBskyRichtextFacet,
 )
+from bs4 import BeautifulSoup, Tag
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.models.message import Message
 
 logger = logging.getLogger()
+
+REQUESTS_EMBED_GET_TIMEOUT: Final[int] = 2
 
 
 class BlueskyConnection(Connection):
@@ -131,7 +138,14 @@ class BlueskyConnection(Connection):
         posted_message_ids: list[str] = []
 
         for message in messages:
-            created_record = self.service.send_post(text=message.message)
+            post_embed = self._create_embed_for_post(message.message)
+            if post_embed:
+                embed, facet = post_embed
+                created_record = self.service.send_post(
+                    text=message.message, embed=embed, facets=[facet]
+                )
+            else:
+                created_record = self.service.send_post(text=message.message)
             created_uri = created_record.uri
 
             # NOTE: introducing an artificial delay to ensure the post is indexed
@@ -153,6 +167,69 @@ class BlueskyConnection(Connection):
             posted_message_ids.append(indexed_at)
 
         return posted_message_ids
+
+    def _create_embed_for_post(
+        self, text: str
+    ) -> Optional[tuple[AppBskyEmbedExternal.Main, AppBskyRichtextFacet.Main]]:
+        """
+        If a link is present on the text for a post to be created,
+        creates an Embed object for the link.
+
+        This allows Bluesky to display the link as a preview.
+
+        :param text: The text of the post
+        :return: An Embed object if a link is present, None otherwise
+        """
+
+        # Extract the first link from the text
+        urls = re.findall(r"http[s]?://[^\s]+", text)
+
+        if not urls:
+            return None
+
+        for url in urls:
+            # Hit the URL to check if it is valid and extract title and description
+            try:
+                # Using a very short timeout, we don't want to spend too much time here
+                response = requests.get(url, timeout=REQUESTS_EMBED_GET_TIMEOUT)
+            except requests.RequestException:
+                continue
+
+            if response.status_code == 200:
+                # Parse the response to extract title and description
+                soup = BeautifulSoup(response.content, "html.parser")
+                title = soup.title.string if soup.title else urlparse(url).netloc
+                parsed_description = soup.find("meta", attrs={"name": "description"})
+
+                if isinstance(parsed_description, Tag):
+                    description = parsed_description["content"]
+                else:
+                    description = url
+
+                # Return the Embed object
+                embed = AppBskyEmbedExternal.Main(
+                    external=AppBskyEmbedExternal.External(
+                        uri=url,
+                        title=title,
+                        description=description,
+                    )
+                )
+
+                facet = AppBskyRichtextFacet.Main(
+                    features=[
+                        AppBskyRichtextFacet.Link(
+                            uri=url,
+                        )
+                    ],
+                    index=AppBskyRichtextFacet.ByteSlice(
+                        byte_start=text.index(url),
+                        byte_end=text.index(url) + len(url),
+                    ),
+                )
+                return embed, facet
+
+        # We couldn't find a working link!
+        return None
 
     def _process_text_with_embed(
         self,
