@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.8] - 2025-03-16
+
+### Added
+
+- Add support for embedding URLs (with URL preview and clickable URLs) when creating posts in Bluesky
+- Unit tests for MastodonConnection's retry logic
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.8.7] - 2025-03-15
 
 ### Fixed
