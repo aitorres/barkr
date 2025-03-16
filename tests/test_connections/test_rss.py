@@ -3,6 +3,7 @@ Module to implement unit tests for the RSS connection class
 """
 
 from dataclasses import dataclass
+from time import struct_time
 
 import pytest
 
@@ -19,6 +20,7 @@ class MockFeedParserFeedEntry:
 
     title: str
     link: str
+    published_parsed: struct_time = struct_time((2025, 2, 27, 1, 0, 0, 1, 0, 0))
 
 
 @dataclass(frozen=True)
@@ -98,6 +100,30 @@ def test_rss_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     messages = rss.read()
     assert not messages
 
+    # Reading skips messages that are older than the min_date
+    monkeypatch.setattr(
+        "feedparser.parse",
+        lambda _: MockFeedParserFeed(
+            entries=[
+                MockFeedParserFeedEntry(
+                    "New Title",
+                    "https://new.example.com",
+                    struct_time((2025, 3, 1, 1, 0, 1, 0, 0, 0)),
+                ),
+                MockFeedParserFeedEntry(
+                    "Title",
+                    "https://example.com",
+                    struct_time((2025, 2, 27, 1, 0, 1, 0, 0, 0)),
+                ),
+            ]
+        ),
+    )
+    rss.feed_min_date = struct_time((2025, 2, 28, 1, 0, 1, 0, 0, 0))
+    messages = rss.read()
+    assert len(messages) == 1
+    assert messages[0].id == "https://new.example.com"
+    assert messages[0].message == "New Title: https://new.example.com"
+
     # Reading returns a list of messages as expected with a custom callback
     def custom_callback(link: str, title: str) -> str:
         return f"Custom: {title} ({link})"
@@ -116,6 +142,7 @@ def test_rss_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             entries=[MockFeedParserFeedEntry("Title", "https://example.com")]
         ),
     )
+    rss.feed_min_date = None
     messages = rss.read()
     assert len(messages) == 1
     assert messages[0].id == "https://example.com"

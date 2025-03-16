@@ -4,7 +4,8 @@ supporting reading messages from a given feed.
 """
 
 import logging
-from typing import Callable
+from time import struct_time
+from typing import Callable, Optional
 
 import feedparser
 
@@ -38,6 +39,7 @@ class RSSConnection(Connection):
 
     feed_url: str
     feed_message_callback: Callable[[str, str], str]
+    feed_min_date: Optional[struct_time] = None
 
     def __init__(
         self,
@@ -65,8 +67,29 @@ class RSSConnection(Connection):
         if self.modes != [ConnectionMode.READ]:
             raise NotImplementedError("RSSConnection only supports read mode.")
 
+        # Storing parameters for later use
         self.feed_url = feed_url
         self.feed_message_callback = feed_message_callback
+
+        # Getting most recent post date
+        try:
+            feed = feedparser.parse(self.feed_url)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error on initial RSS feed fetch : %s", e)
+        else:
+            if feed.entries:
+                # Set the initial min_date to the most recent post's published date
+                self.feed_min_date = feed.entries[0].published_parsed
+                logger.info(
+                    "RSS (%s) initial min_date: %s", self.name, self.feed_min_date
+                )
+            else:
+                logger.info(
+                    "RSS (%s) initial min_date not set "
+                    "(no entries found on initial fetch).",
+                    self.name,
+                )
+
         logger.info("RSS (%s) connection initialized successfully", self.name)
 
     def _fetch(self) -> list[Message]:
@@ -87,11 +110,18 @@ class RSSConnection(Connection):
 
         messages = []
         for entry in feed.entries:
+            if self.feed_min_date and entry.published_parsed <= self.feed_min_date:
+                continue
+
             message = Message(
                 id=entry.link,
                 message=self.feed_message_callback(entry.link, entry.title),
             )
             messages.append(message)
+
+        # Updated min_date to the most recent post's published date
+        if feed.entries:
+            self.feed_min_date = feed.entries[0].published_parsed
 
         logger.info(
             "Fetched %d messages from RSS (%s) connection", len(messages), self.name
