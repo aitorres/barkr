@@ -83,4 +83,4 @@ jobs:
           release_name: ${{ github.ref }}
           draft: false
           prerelease: false
-          body: ${{ needs.build.outputs.changelog_content.outputs.stdout }}
+          body: ${{ needs.build.outputs.changelog_content }}
