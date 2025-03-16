@@ -5,6 +5,7 @@ Module to implement unit tests for the Mastodon connection class
 from typing import Any
 
 import pytest
+from mastodon import MastodonNetworkError
 
 from barkr.connections import ConnectionMode, MastodonConnection
 from barkr.models.message import Message
@@ -146,3 +147,65 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert messages == [Message(id="44554455", message="test message 5 test message 6")]
     assert mastodon.min_id == "12121212"
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
+
+
+def test_mastodon_handles_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test that, on a post write, Mastodon can retry posting the message
+    whenever an exception is raised
+    """
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_verify_credentials",
+        lambda _: {"id": "1234567890"},
+    )
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_statuses",
+        lambda *_args, **_kwargs: [],
+    )
+
+    mastodon = MastodonConnection(
+        "MastodonClass",
+        [ConnectionMode.WRITE],
+        "test_token",
+        "https://example.com",
+    )
+    assert mastodon.name == "MastodonClass"
+    assert mastodon.account_id == "1234567890"
+    assert mastodon.min_id is None
+    assert mastodon.posted_message_ids == set()
+
+    posted_messages: list[str] = []
+    current_attempts: int = 0
+    total_attempts: int = 0
+
+    def status_post_mockup(_, message: str) -> dict[str, Any]:
+        nonlocal current_attempts
+        nonlocal total_attempts
+
+        total_attempts += 1
+
+        if current_attempts < 2:
+            current_attempts += 1
+            raise MastodonNetworkError("Test exception")
+
+        posted_messages.append(message)
+        current_attempts = 0
+
+        return {"id": "12121212" if message == "test message 3" else "23232323"}
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.status_post", status_post_mockup
+    )
+
+    mastodon.write(
+        [
+            Message(id="ForeignId1", message="test message 3"),
+            Message(id="ForeignId2", message="test message 4"),
+        ]
+    )
+    assert posted_messages == ["test message 3", "test message 4"]
+    assert mastodon.posted_message_ids == {"12121212", "23232323"}
+    assert current_attempts == 0
+    assert total_attempts == 6
