@@ -48,7 +48,7 @@ pre-commit = "^4.1.0"
 flake8 = "^7.1.2"
 black = "^25.1.0"
 mypy = "^1.15.0"
-pylint = "^3.3.4"
+pylint = "^3.3.5"
 isort = "^6.0.1"
 types-beautifulsoup4 = "^4.12.0.20250204"
 
