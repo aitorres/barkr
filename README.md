@@ -39,6 +39,8 @@ from barkr.connections import (
     TwitterConnection,
 )
 
+from barkr.models import Message
+
 barkr = Barkr(
     [
         # Barkr will read new messages posted by this account, and queue them to
@@ -92,7 +94,16 @@ barkr = Barkr(
     ]
 )
 
+# Blocking: will start reading and writing threads to keep the connections in sync
 barkr.start()
+
+# Non-blocking, if you only need to write messages to your connections
+barkr.write_message(
+    Message(
+        id="123456",
+        message="Hello, world!",
+    )
+)
 ```
 
 Always keep in mind proper secret management practices when using Barkr: instead of hardcoding access tokens / cookies / user and passwords, use tools like environment variables, `dotenv` or other secret managers!
