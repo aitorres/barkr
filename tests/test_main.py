@@ -6,7 +6,7 @@ import pytest
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.main import Barkr
-from barkr.models.message import Message
+from barkr.models import Message
 
 
 class ConnectionMockup(Connection):

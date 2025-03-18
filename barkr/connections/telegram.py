@@ -12,7 +12,7 @@ import logging
 from telegram.ext import Application, ApplicationBuilder
 
 from barkr.connections.base import Connection, ConnectionMode
-from barkr.models.message import Message
+from barkr.models import Message
 
 logger = logging.getLogger()
 

@@ -9,7 +9,7 @@ from threading import Lock, Thread
 from typing import Optional
 
 from barkr.connections import Connection, ConnectionMode
-from barkr.models.message import Message
+from barkr.models import Message
 from barkr.utils import wrap_while_true
 
 logger = logging.getLogger()

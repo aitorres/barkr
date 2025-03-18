@@ -6,7 +6,7 @@ and related code.
 import pytest
 
 from barkr.connections import Connection, ConnectionMode
-from barkr.models.message import Message
+from barkr.models import Message
 
 
 def test_connection() -> None:

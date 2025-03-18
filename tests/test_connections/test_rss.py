@@ -9,7 +9,7 @@ import pytest
 
 from barkr.connections import ConnectionMode, RSSConnection
 from barkr.connections.rss import default_feed_message_callback
-from barkr.models.message import Message
+from barkr.models import Message
 
 
 @dataclass(frozen=True)

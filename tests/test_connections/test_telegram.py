@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from barkr.connections import ConnectionMode, TelegramConnection
-from barkr.models.message import Message
+from barkr.models import Message
 
 
 def test_telegram_connection(monkeypatch: pytest.MonkeyPatch) -> None:

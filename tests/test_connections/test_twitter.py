@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 import pytest
 
 from barkr.connections import ConnectionMode, TwitterConnection
-from barkr.models.message import Message
+from barkr.models import Message
 
 
 @dataclass(frozen=True)

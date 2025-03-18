@@ -6,7 +6,7 @@ connections to social media networks, chat services, etc.
 import logging
 from enum import Enum
 
-from barkr.models.message import Message
+from barkr.models import Message
 
 logger = logging.getLogger()
 

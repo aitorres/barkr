@@ -26,7 +26,7 @@ from atproto_client.models.common import XrpcError  # type: ignore
 from bs4 import BeautifulSoup, Tag
 
 from barkr.connections.base import Connection, ConnectionMode
-from barkr.models.message import Message
+from barkr.models import Message
 
 logger = logging.getLogger()
 

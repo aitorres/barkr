@@ -13,7 +13,7 @@ import logging
 import discord
 
 from barkr.connections.base import Connection, ConnectionMode
-from barkr.models.message import Message
+from barkr.models import Message
 
 logger = logging.getLogger()
 

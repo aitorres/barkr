@@ -8,7 +8,7 @@ import pytest
 from mastodon import MastodonNetworkError
 
 from barkr.connections import ConnectionMode, MastodonConnection
-from barkr.models.message import Message
+from barkr.models import Message
 
 
 def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
