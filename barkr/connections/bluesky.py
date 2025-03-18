@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 import requests
 from atproto import Client
+from atproto_client.exceptions import BadRequestError  # type: ignore
 from atproto_client.models import (  # type: ignore
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
@@ -21,6 +22,7 @@ from atproto_client.models import (  # type: ignore
     AppBskyEmbedVideo,
     AppBskyRichtextFacet,
 )
+from atproto_client.models.common import XrpcError  # type: ignore
 from bs4 import BeautifulSoup, Tag
 
 from barkr.connections.base import Connection, ConnectionMode
@@ -144,9 +146,35 @@ class BlueskyConnection(Connection):
 
         for message in messages:
             embed, facets = self._generate_post_embed_and_facets(message.message)
-            created_record = self.service.send_post(
-                text=message.message, embed=embed, facets=facets if facets else None
-            )
+            try:
+                created_record = self.service.send_post(
+                    text=message.message, embed=embed, facets=facets if facets else None
+                )
+            except BadRequestError as e:
+                # We could be trying to create an embed that is too large,
+                # let's recover
+                error_response = e.response
+                content = error_response.content
+
+                if isinstance(content, XrpcError) and content.error == "BlobTooLarge":
+                    logger.warning(
+                        "Bluesky (%s) post failed due to embed size, "
+                        "reattempting post without embed.",
+                        self.name,
+                    )
+                    created_record = self.service.send_post(
+                        text=message.message,
+                        embed=None,
+                        facets=facets if facets else None,
+                    )
+                else:
+                    logger.error(
+                        "Bluesky (%s) post failed with error: %s",
+                        self.name,
+                        content,
+                    )
+                    raise e
+
             created_uri = created_record.uri
 
             # NOTE: introducing an artificial delay to ensure the post is indexed
