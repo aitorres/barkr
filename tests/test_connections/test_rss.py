@@ -149,3 +149,38 @@ def test_rss_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert messages[0].message == "Custom: Title (https://example.com)"
     assert messages[0].message != "Title: https://example.com"
     assert messages[0].message == custom_callback("https://example.com", "Title")
+
+
+def test_rssconnection_handles_exception_on_initial_fetch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Test that the RSSConnection handles exceptions on initial fetch
+    """
+
+    # Mocking the feedparser.parse method to raise an exception
+    monkeypatch.setattr(
+        "feedparser.parse",
+        lambda _: 1 / 0,
+    )
+
+    rss = RSSConnection(
+        "RSSClass",
+        [ConnectionMode.READ],
+        "https://example.com",
+    )
+    assert rss.feed_min_date is None
+    assert rss.feed_url == "https://example.com"
+
+    # Simulating a successful fetch after the initial exception
+    monkeypatch.setattr(
+        "feedparser.parse",
+        lambda _: MockFeedParserFeed(
+            entries=[MockFeedParserFeedEntry("Title", "https://example.com")]
+        ),
+    )
+    messages = rss.read()
+    assert len(messages) == 1
+    assert messages[0].id == "https://example.com"
+    assert messages[0].message == "Title: https://example.com"
+    assert rss.feed_min_date is not None
