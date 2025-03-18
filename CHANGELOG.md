@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.9] - 2025-03-18
+
+### Fixed
+
+- Bluesky connection can now recover when attempting to post a message with an embed whose preview image is too large
+
+### Changed
+
+- Minor dependency updates
+- Increased test coverage for RSS and Telegram connections
+- `Message` model can now be imported from `barkr.models` (`barkr.models.message` is still supported to keep backwards compatibility)
+- Documented `write_message` method on [`README.md`](./README.md) sample code.
+
 ## [0.8.8] - 2025-03-16
 
 ### Added
