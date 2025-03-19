@@ -43,6 +43,17 @@ class MockRecord:
 
 
 @dataclass(frozen=True)
+class MockViewer:
+    """
+    Mock class to simulate the viewer of a Bluesky post
+    """
+
+    # NOTE: this is not a string in the real contract, but enough
+    # for our tests
+    repost: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class MockPostData:
     """
     Mock class to simulate a Bluesky post data
@@ -50,7 +61,7 @@ class MockPostData:
 
     indexed_at: str
     record: MockRecord
-    viewer: Optional[str] = None
+    viewer: Optional[MockViewer] = None
 
 
 @dataclass(frozen=True)
@@ -170,6 +181,39 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     messages = bluesky.read()
     assert len(messages) == 0
+
+    # Testing that Bluesky ignores posts that are reposts
+    bluesky.min_id = None
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_args, **_kwargs: MockFeed(
+            [
+                MockPost(
+                    MockPostData(
+                        "2001-10-31T02:30:00.000-05:00",
+                        MockRecord("Hello, world 2!", reply="12345678"),
+                        viewer=MockViewer(repost="12345678"),
+                    )
+                ),
+                MockPost(
+                    MockPostData(
+                        "2001-10-31T01:30:00.000-05:00",
+                        MockRecord("Goodbye, world!"),
+                        viewer=MockViewer(repost="12345678"),
+                    )
+                ),
+                MockPost(
+                    MockPostData(
+                        "2001-10-31T01:30:00.000-05:00",
+                        MockRecord("I'm still here, world!"),
+                    )
+                ),
+            ]
+        ),
+    )
+    messages = bluesky.read()
+    assert len(messages) == 1
+    assert messages[0].message == "I'm still here, world!"
 
 
 def test_bluesky_reconstructs_embeds_successfully(
