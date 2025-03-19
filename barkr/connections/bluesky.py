@@ -5,7 +5,6 @@ via their handle and password.
 """
 
 import logging
-import re
 import time
 from datetime import datetime
 from typing import Final, Optional, Union
@@ -27,6 +26,7 @@ from bs4 import BeautifulSoup, Tag
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.models import Message
+from barkr.utils import extract_urls_from_text
 
 logger = logging.getLogger()
 
@@ -212,13 +212,10 @@ class BlueskyConnection(Connection):
         :return: A tuple containing the Embed object and a list of facets
         """
 
-        # Extract the first link from the text
-        urls = re.findall(r"http[s]?://[^\s]+", text)
-
         embed = None
         facets: list[AppBskyRichtextFacet.Main] = []
 
-        for url in urls:
+        for url in extract_urls_from_text(text):
             # Hit the URL to check if it is valid and extract title and description
             try:
                 # Using a very short timeout, we don't want to spend too much time here
@@ -237,14 +234,17 @@ class BlueskyConnection(Connection):
                     thumbnail_blob = None
 
                     # Extract the description from the meta tag
-                    parsed_description = soup.find(
-                        "meta", attrs={"name": "description"}
-                    )
-                    if isinstance(parsed_description, Tag):
-                        description = parsed_description["content"]
+                    if (
+                        meta_description := _get_meta_tag_from_html_metadata(
+                            soup, "og:description"
+                        )
+                    ) is not None:
+                        description = meta_description
 
                     # Extract the image from the meta tag
-                    if (image := _get_image_url_from_html_metadata(soup)) is not None:
+                    if (
+                        image := _get_meta_tag_from_html_metadata(soup, "og:image")
+                    ) is not None:
                         # Fetching the image and reuploading to Bluesky
                         try:
                             img_data = requests.get(
@@ -270,6 +270,7 @@ class BlueskyConnection(Connection):
                     )
 
                 # Create a facet for the link
+                url_index = text.index(url)
                 facets.append(
                     AppBskyRichtextFacet.Main(
                         features=[
@@ -278,10 +279,8 @@ class BlueskyConnection(Connection):
                             )
                         ],
                         index=AppBskyRichtextFacet.ByteSlice(
-                            byte_start=len(text[: text.index(url)].encode("utf-8")),
-                            byte_end=len(
-                                text[: text.index(url) + len(url)].encode("utf-8")
-                            ),
+                            byte_start=len(text[:url_index].encode("utf-8")),
+                            byte_end=len(text[: url_index + len(url)].encode("utf-8")),
                         ),
                     )
                 )
@@ -343,21 +342,27 @@ class BlueskyConnection(Connection):
         return text.replace(matching_word, url)
 
 
-def _get_image_url_from_html_metadata(soup: BeautifulSoup) -> Optional[str]:
+def _get_meta_tag_from_html_metadata(
+    soup: BeautifulSoup, tag_name: str
+) -> Optional[str]:
     """
-    Extracts the image URL from the HTML metadata of a page.
+    Extracts the content of meta tag from the HTML metadata of a page.
+
+    If there are multiple meta tags with the same property,
+    only the first one is returned.
 
     :param soup: The BeautifulSoup object containing the HTML metadata
-    :return: The image URL if found, otherwise None
+    :param tag_name: The name of the meta tag to extract
+    :return: The meta tag content if found, otherwise None
     """
 
-    og_image = soup.find("meta", attrs={"property": "og:image"})
-    if isinstance(og_image, Tag):
-        image = og_image["content"]
+    tag = soup.find("meta", attrs={"property": tag_name})
+    if isinstance(tag, Tag):
+        tag_content = tag["content"]
 
-        if isinstance(image, list):
-            image = image[0]
+        if isinstance(tag_content, list):
+            tag_content = tag_content[0]
 
-        return image
+        return tag_content
 
     return None
