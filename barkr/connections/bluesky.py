@@ -278,8 +278,10 @@ class BlueskyConnection(Connection):
                             )
                         ],
                         index=AppBskyRichtextFacet.ByteSlice(
-                            byte_start=text.index(url),
-                            byte_end=text.index(url) + len(url),
+                            byte_start=len(text[: text.index(url)].encode("utf-8")),
+                            byte_end=len(
+                                text[: text.index(url) + len(url)].encode("utf-8")
+                            ),
                         ),
                     )
                 )
