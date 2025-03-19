@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.10] - 2025-03-19
+
+### Fixed
+
+- When posting on Bluesky, an exception trying to retrieve an image thumbnail for a URL embed will no longer cause the whole writing thread to stop working.
+- When posting on Bluesky, if the message contains accented characters (e.g. the _é_ in "Andrés") and a URL, the URL facet is now being set to the right substring.
+
+### Changed
+
+- Minor refactors
+- Adding small tests for uncovered cases
+
 ## [0.8.9] - 2025-03-18
 
 ### Fixed
