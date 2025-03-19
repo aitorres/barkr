@@ -244,19 +244,20 @@ class BlueskyConnection(Connection):
                         description = parsed_description["content"]
 
                     # Extract the image from the meta tag
-                    og_image = soup.find("meta", attrs={"property": "og:image"})
-                    if isinstance(og_image, Tag):
-                        image = og_image["content"]
-
-                        if isinstance(image, list):
-                            image = image[0]
-
-                        img_data = requests.get(
-                            image,
-                            timeout=REQUESTS_EMBED_GET_TIMEOUT,
-                            headers=REQUESTS_HEADERS,
-                        ).content
-                        thumbnail_blob = self.service.upload_blob(img_data).blob
+                    if (image := _get_image_url_from_html_metadata(soup)) is not None:
+                        # Fetching the image and reuploading to Bluesky
+                        try:
+                            img_data = requests.get(
+                                image,
+                                timeout=REQUESTS_EMBED_GET_TIMEOUT,
+                                headers=REQUESTS_HEADERS,
+                            ).content
+                        except requests.RequestException as e:
+                            logger.warning(
+                                "Failed to fetch image from %s: %s", image, e
+                            )
+                        else:
+                            thumbnail_blob = self.service.upload_blob(img_data).blob
 
                     # Prepare the Embed object
                     embed = AppBskyEmbedExternal.Main(
@@ -338,3 +339,23 @@ class BlueskyConnection(Connection):
             return text
 
         return text.replace(matching_word, url)
+
+
+def _get_image_url_from_html_metadata(soup: BeautifulSoup) -> Optional[str]:
+    """
+    Extracts the image URL from the HTML metadata of a page.
+
+    :param soup: The BeautifulSoup object containing the HTML metadata
+    :return: The image URL if found, otherwise None
+    """
+
+    og_image = soup.find("meta", attrs={"property": "og:image"})
+    if isinstance(og_image, Tag):
+        image = og_image["content"]
+
+        if isinstance(image, list):
+            image = image[0]
+
+        return image
+
+    return None
