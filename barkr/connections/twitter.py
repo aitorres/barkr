@@ -72,16 +72,6 @@ class TwitterConnection(Connection):
         )
         logger.info("Twitter (%s) connection initialized!", self.name)
 
-    def _fetch(self) -> list[Message]:
-        """
-        Fetch messages from the authenticated user's timeline.
-
-        This method is not implemented for Twitter connections.
-
-        :return: An empty list
-        """
-        return []
-
     def _post(self, messages: list[Message]) -> list[str]:
         """
         Post a list of messages as tweets from the authenticated user.

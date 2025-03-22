@@ -54,16 +54,6 @@ class TelegramConnection(Connection):
         self.chat_id = chat_id
         logger.info("Telegram (%s) connection initialized successfully", self.name)
 
-    def _fetch(self) -> list[Message]:
-        """
-        Fetch messages from Telegram.
-
-        This method is not implemented for Telegram connections.
-
-        :return: An empty list
-        """
-        return []
-
     def _post(self, messages: list[Message]) -> list[str]:
         """
         Post a list of messages to a Telegram chat / channel

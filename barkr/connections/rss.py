@@ -127,14 +127,3 @@ class RSSConnection(Connection):
             "Fetched %d messages from RSS (%s) connection", len(messages), self.name
         )
         return messages
-
-    def _post(self, messages: list[Message]) -> list[str]:
-        """
-        Post a list of messages to the RSS feed.
-
-        This method is not implemented for RSS connections.
-
-        :param messages: A list of messages to post
-        :return: An empty list
-        """
-        return []

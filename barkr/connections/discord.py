@@ -70,16 +70,6 @@ class DiscordConnection(Connection):
 
         logger.info("Discord (%s) connection initialized successfully", self.name)
 
-    def _fetch(self) -> list[Message]:
-        """
-        Fetch messages from Discord.
-
-        This method is not implemented for Discord connections.
-
-        :return: An empty list
-        """
-        return []
-
     def _post(self, messages: list[Message]) -> list[str]:
         """
         Post a list of messages to a Discord channel as the authenticated bot.
