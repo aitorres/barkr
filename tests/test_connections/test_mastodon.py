@@ -209,3 +209,51 @@ def test_mastodon_handles_retries(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
     assert current_attempts == 0
     assert total_attempts == 6
+
+
+def test_mastodon_handles_retries_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test that, on a post write, Mastodon surfaces the exception if
+    the maximum number of retries is reached
+    """
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_verify_credentials",
+        lambda _: {"id": "1234567890"},
+    )
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_statuses",
+        lambda *_args, **_kwargs: [],
+    )
+
+    mastodon = MastodonConnection(
+        "MastodonClass",
+        [ConnectionMode.WRITE],
+        "test_token",
+        "https://example.com",
+    )
+    assert mastodon.name == "MastodonClass"
+    assert mastodon.account_id == "1234567890"
+    assert mastodon.min_id is None
+    assert mastodon.posted_message_ids == set()
+
+    total_attempts: int = 0
+
+    def status_post_mockup(_, _message: str) -> dict[str, Any]:
+        nonlocal total_attempts
+
+        total_attempts += 1
+        raise MastodonNetworkError("Test exception")
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.status_post", status_post_mockup
+    )
+
+    with pytest.raises(MastodonNetworkError, match="Test exception"):
+        mastodon.write(
+            [
+                Message(id="ForeignId1", message="test message 3"),
+                Message(id="ForeignId2", message="test message 4"),
+            ]
+        )
