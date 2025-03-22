@@ -37,6 +37,8 @@ REQUESTS_HEADERS: Final[dict[str, str]] = {
     )
 }
 
+BLUESKY_MAX_MESSAGE_LENGTH: Final[int] = 300
+
 
 class BlueskyConnection(Connection):
     """
@@ -145,6 +147,16 @@ class BlueskyConnection(Connection):
         posted_message_ids: list[str] = []
 
         for message in messages:
+            if len(message.message) > BLUESKY_MAX_MESSAGE_LENGTH:
+                logger.warning(
+                    "Message length exceeds Bluesky (%s) "
+                    "maximum length (%s), skipping: %s",
+                    self.name,
+                    BLUESKY_MAX_MESSAGE_LENGTH,
+                    message.message,
+                )
+                continue
+
             embed, facets = self._generate_post_embed_and_facets(message.message)
             try:
                 created_record = self.service.send_post(

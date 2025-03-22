@@ -26,12 +26,6 @@ class MockTweepyClient:
     Mock class for the Tweepy Client
     """
 
-    consumer_key: str
-    consumer_secret: str
-    access_token: str
-    access_token_secret: str
-    bearer_token: str
-
     posted_statuses: list[str] = field(default_factory=list)
 
     def create_tweet(self, text: str) -> MockTweepyStatus:
@@ -74,9 +68,10 @@ def test_twitter_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             "test_bearer_token",
         )
 
+    mock_client = MockTweepyClient()
     monkeypatch.setattr(
         "barkr.connections.twitter.Client",
-        MockTweepyClient,
+        lambda *args, **kwargs: mock_client,
     )
 
     twitter = TwitterConnection(
@@ -103,3 +98,17 @@ def test_twitter_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     assert twitter.posted_message_ids == {1, 2}
+    assert mock_client.posted_statuses == ["test message 1", "test message 2"]
+
+    # If a message is too long, it should be skipped
+    twitter.write(
+        [
+            Message(id="3", message="a" * 300),
+            Message(id="4", message="test message 4"),
+        ]
+    )
+    assert mock_client.posted_statuses == [
+        "test message 1",
+        "test message 2",
+        "test message 4",
+    ]

@@ -6,6 +6,7 @@ This module uses the Tweepy library to interact with the Twitter API.
 """
 
 import logging
+from typing import Final
 
 from tweepy import Client
 
@@ -13,6 +14,9 @@ from barkr.connections.base import Connection, ConnectionMode
 from barkr.models import Message
 
 logger = logging.getLogger()
+
+
+TWITTER_MAX_LENGTH: Final[int] = 280
 
 
 class TwitterConnection(Connection):
@@ -89,6 +93,14 @@ class TwitterConnection(Connection):
         posted_message_ids: list[str] = []
 
         for message in messages:
+            if len(message.message) > TWITTER_MAX_LENGTH:
+                logger.warning(
+                    "Message exceeds Twitter's max length (%s characters), skipping: %s",
+                    TWITTER_MAX_LENGTH,
+                    message.message,
+                )
+                continue
+
             posted_tweet = self.client.create_tweet(text=message.message)
             posted_message_ids.append(posted_tweet.id)
             logger.info("Tweeted message: %s", message.message)
