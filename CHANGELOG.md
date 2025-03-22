@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.11] - 2025-03-22
+
+### Fixed
+
+- Barkr will not attempt to publish a message whose length exceeds a channel's known maximum (Bluesky, Twitter)
+
+### Changed
+
+- Removed unneeded / empty method implementations from non-read/write connections
+- Increased test coverage for Mastodon connection
+- Minor dependency updates
+
 ## [0.8.10] - 2025-03-19
 
 ### Fixed
