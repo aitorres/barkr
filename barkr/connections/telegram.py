@@ -64,7 +64,9 @@ class TelegramConnection(Connection):
         """
 
         for message in messages:
-            asyncio.run(self.app.bot.send_message(chat_id=self.chat_id, text=message))
+            asyncio.run(
+                self.app.bot.send_message(chat_id=self.chat_id, text=message.message)
+            )
             logger.info("Message posted to Telegram (%s) chat / channel", self.name)
 
         return []
