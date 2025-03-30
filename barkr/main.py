@@ -144,8 +144,13 @@ class Barkr:
 
         for connection in self.connections:
             if ConnectionMode.WRITE in connection.modes:
-                connection.write([message])
-                logger.info("Posted message to %s", connection.name)
+                try:
+                    connection.write([message])
+                except Exception as e:  # pylint: disable=broad-except
+                    logger.error("Error posting message to %s: %s", connection.name, e)
+                    continue
+                else:
+                    logger.info("Posted message to %s", connection.name)
 
         logger.info("Message posted to all connections!")
 
