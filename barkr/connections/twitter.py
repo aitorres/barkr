@@ -91,8 +91,9 @@ class TwitterConnection(Connection):
                 )
                 continue
 
-            posted_tweet = self.client.create_tweet(text=message.message)
-            posted_message_ids.append(posted_tweet.id)
+            posted_tweet_response = self.client.create_tweet(text=message.message)
+            posted_tweet_id = posted_tweet_response.data["id"]
+            posted_message_ids.append(posted_tweet_id)
             logger.info("Tweeted message: %s", message.message)
 
         return posted_message_ids

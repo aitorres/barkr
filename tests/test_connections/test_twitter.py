@@ -3,6 +3,7 @@ Module to implement unit tests for the Twitter connection class
 """
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import pytest
 
@@ -11,13 +12,21 @@ from barkr.models import Message
 
 
 @dataclass(frozen=True)
-class MockTweepyStatus:
+class MockTweepyStatusResponse:
     """
     Mock class for the Tweepy Status
     """
 
     id: int
     text: str
+
+    @property
+    def data(self) -> dict[str, Any]:
+        """
+        Mock method for the data property
+        """
+
+        return {"id": self.id, "text": self.text}
 
 
 @dataclass(frozen=True)
@@ -28,13 +37,13 @@ class MockTweepyClient:
 
     posted_statuses: list[str] = field(default_factory=list)
 
-    def create_tweet(self, text: str) -> MockTweepyStatus:
+    def create_tweet(self, text: str) -> MockTweepyStatusResponse:
         """
         Mock method for updating the status
         """
 
         self.posted_statuses.append(text)
-        return MockTweepyStatus(len(self.posted_statuses), text)
+        return MockTweepyStatusResponse(len(self.posted_statuses), text)
 
 
 def test_twitter_connection(monkeypatch: pytest.MonkeyPatch) -> None:
