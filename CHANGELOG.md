@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.1] - 2025-03-30
+
+### Fixed
+
+- When posting messages via `Barkr.write_message`, each connection will have its own error-catching logic, so that if one connection fails, the others will still be able to post.
+
 ## [0.9.0] - 2025-03-30
 
 ### Added
