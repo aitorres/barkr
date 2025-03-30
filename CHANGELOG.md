@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.0] - 2025-03-30
+
+### Added
+
+- Implemented a new connection class for ActivityBot, a Mastodon bot implementation, with write support.
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.8.11] - 2025-03-22
 
 ### Fixed

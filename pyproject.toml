@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "barkr"
-version = "0.8.11"
+version = "0.9.0"
 description = "Yet another cross-posting tool in Python"
 authors = ["Andrés Ignacio Torres <dev@aitorres.com>"]
 readme = "README.md"
@@ -46,13 +46,13 @@ requests = "^2.32.3"
 pytest = "^8.3.5"
 pytest-cov = "^6.0.0"
 pre-commit = "^4.2.0"
-flake8 = "^7.1.2"
+flake8 = "^7.2.0"
 black = "^25.1.0"
 mypy = "^1.15.0"
 pylint = "^3.3.6"
 isort = "^6.0.1"
 types-beautifulsoup4 = "^4.12.0.20250204"
-types-requests = "^2.32.0.20250306"
+types-requests = "^2.32.0.20250328"
 
 [tool.isort]
 src_paths = ["barkr", "tests"]
