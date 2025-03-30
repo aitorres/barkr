@@ -26,16 +26,13 @@ from bs4 import BeautifulSoup, Tag
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.models import Message
-from barkr.utils import extract_urls_from_text
+from barkr.utils import (
+    REQUESTS_EMBED_GET_TIMEOUT,
+    REQUESTS_HEADERS,
+    extract_urls_from_text,
+)
 
 logger = logging.getLogger()
-
-REQUESTS_EMBED_GET_TIMEOUT: Final[int] = 3
-REQUESTS_HEADERS: Final[dict[str, str]] = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:20.0) " "Gecko/20100101 Firefox/20.0"
-    )
-}
 
 BLUESKY_MAX_MESSAGE_LENGTH: Final[int] = 300
 
