@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.2] - 2025-03-30
+
+### Fixed
+
+- Twitter connection: fixed an issue retrieving the ID of a posted tweet
+- Telegram connection: fixed an issue where the message content was not properly being passed to the bot when sending a message
+
 ## [0.9.1] - 2025-03-30
 
 ### Fixed
