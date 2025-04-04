@@ -2,7 +2,7 @@
 Module to implement unit tests for the Mastodon connection class
 """
 
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from mastodon import MastodonNetworkError
@@ -74,12 +74,14 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 1",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "language": None,
             },
             {
                 "id": "55667788",
                 "content": "test message 2",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "language": None,
             },
         ],
     )
@@ -93,9 +95,13 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mastodon.min_id == "11223344"
 
     posted_messages: list[str] = []
+    posted_languages: list[Optional[str]] = []
 
-    def status_post_mockup(_, message: str) -> dict[str, Any]:
+    def status_post_mockup(
+        _, message: str, language: Optional[str] = None
+    ) -> dict[str, Any]:
         posted_messages.append(message)
+        posted_languages.append(language)
 
         return {"id": "12121212" if message == "test message 3" else "23232323"}
 
@@ -107,9 +113,11 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         [
             Message(id="ForeignId1", message="test message 3"),
             Message(id="ForeignId2", message="test message 4"),
+            Message(id="ForeignId3", message="test message 8", language="en"),
         ]
     )
-    assert posted_messages == ["test message 3", "test message 4"]
+    assert posted_messages == ["test message 3", "test message 4", "test message 8"]
+    assert posted_languages == [None, None, "en"]
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
 
     monkeypatch.setattr(
@@ -120,24 +128,28 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 3",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "language": None,
             },
             {
                 "id": "23232323",
                 "content": "test message 4",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "language": None,
             },
             {
                 "id": "44554455",
                 "content": "<p>test message 5</p> <p>test message 6</p>",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "language": None,
             },
             {
                 "id": "44554458",
                 "content": "<p>test message 7</p> <p>test message 8</p>",
                 "reblog": None,
                 "in_reply_to_id": "13245678945613",
+                "language": None,
             },
         ],
     )
@@ -147,6 +159,40 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert messages == [Message(id="44554455", message="test message 5 test message 6")]
     assert mastodon.min_id == "12121212"
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
+
+    # Parses language successfully
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_statuses",
+        lambda *_args, **_kwargs: [
+            {
+                "id": "52121212",
+                "content": "test message 3",
+                "reblog": None,
+                "in_reply_to_id": None,
+                "language": "en",
+            },
+            {
+                "id": "73232323",
+                "content": "test message 4",
+                "reblog": None,
+                "in_reply_to_id": None,
+                "language": "es",
+            },
+            {
+                "id": "93232323",
+                "content": "test message 4",
+                "reblog": None,
+                "in_reply_to_id": None,
+                "language": None,
+            },
+        ],
+    )
+    messages = mastodon.read()
+    assert messages == [
+        Message(id="52121212", message="test message 3", language="en"),
+        Message(id="73232323", message="test message 4", language="es"),
+        Message(id="93232323", message="test message 4", language=None),
+    ]
 
 
 def test_mastodon_handles_retries(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -180,7 +226,7 @@ def test_mastodon_handles_retries(monkeypatch: pytest.MonkeyPatch) -> None:
     current_attempts: int = 0
     total_attempts: int = 0
 
-    def status_post_mockup(_, message: str) -> dict[str, Any]:
+    def status_post_mockup(_, message: str, *_args, **_kwargs) -> dict[str, Any]:
         nonlocal current_attempts
         nonlocal total_attempts
 
@@ -240,7 +286,7 @@ def test_mastodon_handles_retries_failure(monkeypatch: pytest.MonkeyPatch) -> No
 
     total_attempts: int = 0
 
-    def status_post_mockup(_, _message: str) -> dict[str, Any]:
+    def status_post_mockup(_, _message: str, *_args, **_kwargs) -> dict[str, Any]:
         nonlocal total_attempts
 
         total_attempts += 1

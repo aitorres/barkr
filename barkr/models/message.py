@@ -8,6 +8,7 @@ whether or not to take into account.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -18,8 +19,12 @@ class Message:
     can decide whether or not to take into account.
     """
 
+    # Main attributes
     id: str
     message: str
+
+    # Optional metadata
+    language: Optional[str] = None
 
     def has_content(self) -> bool:
         """

@@ -40,6 +40,7 @@ class MockRecord:
     text: str
     reply: Optional[str] = None
     embed: Optional[MockExternalEmbed] = None
+    langs: Optional[list[str]] = None
 
 
 @dataclass(frozen=True)
@@ -161,6 +162,8 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     messages = bluesky.read()
     assert len(messages) == 1
+    assert messages[0].message == "Hello, world 2!"
+    assert messages[0].language is None
 
     # Reading again, no new messages since we increased the min_id
     messages = bluesky.read()
@@ -205,7 +208,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 MockPost(
                     MockPostData(
                         "2001-10-31T01:30:00.000-05:00",
-                        MockRecord("I'm still here, world!"),
+                        MockRecord("I'm still here, world!", langs=["en"]),
                     )
                 ),
             ]
@@ -214,6 +217,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     messages = bluesky.read()
     assert len(messages) == 1
     assert messages[0].message == "I'm still here, world!"
+    assert messages[0].language == "en"
 
 
 def test_bluesky_reconstructs_embeds_successfully(

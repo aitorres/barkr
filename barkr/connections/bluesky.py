@@ -123,7 +123,13 @@ class BlueskyConnection(Connection):
                     else:
                         text = record.text
 
-                    messages.append(Message(id=post.indexed_at, message=text))
+                    language = None
+                    if record.langs:
+                        language = record.langs[0]
+
+                    messages.append(
+                        Message(id=post.indexed_at, message=text, language=language)
+                    )
 
         if messages:
             self.min_id = messages[0].id
@@ -155,9 +161,13 @@ class BlueskyConnection(Connection):
                 continue
 
             embed, facets = self._generate_post_embed_and_facets(message.message)
+            language = [message.language] if message.language else None
             try:
                 created_record = self.service.send_post(
-                    text=message.message, embed=embed, facets=facets if facets else None
+                    text=message.message,
+                    embed=embed,
+                    facets=facets if facets else None,
+                    langs=language,
                 )
             except BadRequestError as e:
                 # We could be trying to create an embed that is too large,
@@ -175,6 +185,7 @@ class BlueskyConnection(Connection):
                         text=message.message,
                         embed=None,
                         facets=facets if facets else None,
+                        langs=language,
                     )
                 else:
                     logger.error(
