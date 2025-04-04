@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.3] - 2025-04-03
+
+### Added
+
+- Added support for `language` metadata on the `Message` model, which is currently supported by the Mastodon and Bluesky connections, on read and write operations.
+
+### Changed
+
+- Connections will now raise an error if duplicate modes are being passed on instantiation.
+- Minor dependency updates
+
 ## [0.9.2] - 2025-03-30
 
 ### Fixed
