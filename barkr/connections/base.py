@@ -47,6 +47,9 @@ class Connection:
         if not modes:
             raise ValueError("At least one mode must be provided for the connection.")
 
+        if len(set(modes)) != len(modes):
+            raise ValueError("Duplicate modes are not allowed for the connection.")
+
         self.name = name
         self.modes = modes
         self.posted_message_ids = set()

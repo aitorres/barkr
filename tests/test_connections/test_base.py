@@ -50,12 +50,20 @@ def test_connection() -> None:
 
 
 def test_connection_mode() -> None:
-    """Tests that at least one mode is required for a connection"""
+    """
+    Tests that at least one mode is required for a connection
+    and no duplicate modes are allowed.
+    """
 
     with pytest.raises(
         ValueError, match="At least one mode must be provided for the connection."
     ):
         Connection("No Modes", [])
+
+    with pytest.raises(
+        ValueError, match="Duplicate modes are not allowed for the connection."
+    ):
+        Connection("Duplicate Modes", [ConnectionMode.READ, ConnectionMode.READ])
 
 
 def test_connection_handles_posted_message_ids(monkeypatch: pytest.MonkeyPatch) -> None:
