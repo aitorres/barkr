@@ -6,7 +6,7 @@ via their handle and password.
 
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Final, Optional, Union
 from urllib.parse import urlparse
 
@@ -201,8 +201,18 @@ class BlueskyConnection(Connection):
             # before fetching the post details
             time.sleep(2)
 
-            post_details = self.service.get_posts([created_uri]).posts[0]
-            indexed_at = post_details.indexed_at
+            try:
+                post_details = self.service.get_posts([created_uri]).posts[0]
+                indexed_at = post_details.indexed_at
+            except IndexError:
+                indexed_at = datetime.now(timezone.utc).isoformat()
+                logger.error(
+                    "Failed to fetch post details for Bluesky (%s) post: %s, "
+                    "manually setting indexed_at to %s",
+                    self.name,
+                    created_uri,
+                    indexed_at,
+                )
 
             logger.info(
                 "Posted message %s to Bluesky (%s) connection (URI: %s, Indexed At: %s)",
