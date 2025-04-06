@@ -199,7 +199,7 @@ class BlueskyConnection(Connection):
 
             # NOTE: introducing an artificial delay to ensure the post is indexed
             # before fetching the post details
-            time.sleep(1)
+            time.sleep(2)
 
             post_details = self.service.get_posts([created_uri]).posts[0]
             indexed_at = post_details.indexed_at
