@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.4] - 2025-04-06
+
+### Fixed
+
+- Bluesky connection: fixed an issue where the writing thread would stop working if a message is posted and the details are not retrieved successfully.
+
 ## [0.9.3] - 2025-04-03
 
 ### Added
