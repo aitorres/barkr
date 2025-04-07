@@ -18,6 +18,7 @@ class ConnectionMockup(Connection):
     def __init__(self, name: str, modes: list[ConnectionMode]) -> None:
         super().__init__(name, modes)
         self.posted_messages: list[str] = []
+        self.raise_exception_on_write: bool = False
 
     def _fetch(self) -> list[Message]:
         return [
@@ -26,6 +27,9 @@ class ConnectionMockup(Connection):
         ]
 
     def _post(self, messages: list[Message]) -> list[str]:
+        if self.raise_exception_on_write:
+            raise NotImplementedError("Simulated exception on write")
+
         self.posted_messages += [m.message for m in messages]
         return [f"id-{i}" for i in range(len(messages))]
 
@@ -193,6 +197,13 @@ def test_barkr_write_message() -> None:
     barkr.write_message(Message(id="Idx", message="msg2"))
     assert test_connection_1.posted_messages == ["msg1", "msg2"]
     assert test_connection_2.posted_messages == ["msg1", "msg2"]
+    assert test_connection_3.posted_messages == []
+
+    # Handling exceptions per-connection
+    test_connection_1.raise_exception_on_write = True
+    barkr.write_message(Message(id="Idx", message="msg3"))
+    assert test_connection_1.posted_messages == ["msg1", "msg2"]
+    assert test_connection_2.posted_messages == ["msg1", "msg2", "msg3"]
     assert test_connection_3.posted_messages == []
 
 

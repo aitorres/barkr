@@ -3,12 +3,18 @@ Module to implement unit tests for the Bluesky connection class
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Optional
 
 import pytest
 from atproto_client.models import AppBskyEmbedExternal  # type: ignore
+from bs4 import BeautifulSoup
 
 from barkr.connections import BlueskyConnection, ConnectionMode
+from barkr.connections.bluesky import (
+    _get_current_indexed_at,
+    _get_meta_tag_from_html_metadata,
+)
 
 
 @dataclass(frozen=True)
@@ -330,3 +336,69 @@ def test_bluesky_reconstructs_embeds_successfully(
         "GFOTY is always refreshing, in a way "
         "https://open.spotify.com/track/3R9PjdxlGKwGzo7ai89L8r?si=b7480cdf279e4fd8"
     )
+
+
+def test_get_current_indexed_at() -> None:
+    """
+    Test that `_get_current_indexed_at` returns a timestamp.
+    """
+
+    current_time = datetime.now(timezone.utc)
+    indexed_at = _get_current_indexed_at()
+
+    # Ensure the returned value is a timestamp
+    parsed_time = datetime.fromisoformat(indexed_at)
+    assert parsed_time.tzinfo == timezone.utc
+
+    # Ensure the returned timestamp is close to the current time
+    delta = abs((parsed_time - current_time).total_seconds())
+    assert delta < 1
+
+
+def test_get_meta_tag_from_html_metadata() -> None:
+    """
+    Tests to check that the meta tag values are extracted correctly
+    from the HTML metadata.
+    """
+
+    # Test case 1: Meta tag with the specified property exists
+    html_content = """
+    <html>
+        <head>
+            <meta property="og:title" content="Test Title">
+            <meta property="og:description" content="Test Description">
+        </head>
+    </html>
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    result = _get_meta_tag_from_html_metadata(soup, "og:title")
+    assert result == "Test Title"
+
+    # Test case 2: Meta tag with the specified property does not exist
+    result = _get_meta_tag_from_html_metadata(soup, "og:image")
+    assert result is None
+
+    # Test case 3: Meta tag with no content attribute
+    html_content = """
+    <html>
+        <head>
+            <meta property="og:title">
+        </head>
+    </html>
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    result = _get_meta_tag_from_html_metadata(soup, "og:title")
+    assert result is None
+
+    # Test case 4: multiple meta tags with the same property
+    html_content = """
+    <html>
+        <head>
+            <meta property="og:title" content="Title 1">
+            <meta property="og:title" content="Title 2">
+        </head>
+    </html>
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    result = _get_meta_tag_from_html_metadata(soup, "og:title")
+    assert result == "Title 1"

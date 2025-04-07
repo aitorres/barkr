@@ -396,3 +396,15 @@ def _get_meta_tag_from_html_metadata(
         return tag_content
 
     return None
+
+
+def _get_current_indexed_at() -> str:
+    """
+    Returns the current UTC timestamp in ISO format,
+    to mock the Bluesky API's indexed_at field
+    right after posting a message if the post details cannot be fetched.
+
+    :return: The current indexed_at timestamp
+    """
+
+    return datetime.now(timezone.utc).isoformat()
