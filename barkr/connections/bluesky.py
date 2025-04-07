@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 import requests
 from atproto import Client
-from atproto_client.exceptions import BadRequestError  # type: ignore
+from atproto_client.exceptions import BadRequestError, InvokeTimeoutError  # type: ignore
 from atproto_client.models import (  # type: ignore
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
@@ -169,6 +169,16 @@ class BlueskyConnection(Connection):
                     facets=facets if facets else None,
                     langs=language,
                 )
+            except InvokeTimeoutError as e:
+                # Something happened with the Bluesky API, let's recover
+                logger.error(
+                    "Bluesky (%s) post failed with timeout error: %s", self.name, e
+                )
+
+                # In case we _did_ post the message, we don't want to
+                # re-post it again
+                self.min_id = _get_current_indexed_at()
+                continue
             except BadRequestError as e:
                 # We could be trying to create an embed that is too large,
                 # let's recover
@@ -189,7 +199,7 @@ class BlueskyConnection(Connection):
                     )
                 else:
                     logger.error(
-                        "Bluesky (%s) post failed with error: %s",
+                        "Bluesky (%s) post failed with unexpected error: %s",
                         self.name,
                         content,
                     )
@@ -205,7 +215,7 @@ class BlueskyConnection(Connection):
                 post_details = self.service.get_posts([created_uri]).posts[0]
                 indexed_at = post_details.indexed_at
             except IndexError:
-                indexed_at = datetime.now(timezone.utc).isoformat()
+                indexed_at = _get_current_indexed_at()
                 logger.error(
                     "Failed to fetch post details for Bluesky (%s) post: %s, "
                     "manually setting indexed_at to %s",
@@ -387,7 +397,7 @@ def _get_meta_tag_from_html_metadata(
     """
 
     tag = soup.find("meta", attrs={"property": tag_name})
-    if isinstance(tag, Tag):
+    if isinstance(tag, Tag) and tag.has_attr("content"):
         tag_content = tag["content"]
 
         if isinstance(tag_content, list):
