@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.5] - 2025-04-07
+
+### Added
+
+- More unit test coverage for utility and helper functions.
+
+### Fixed
+
+- Bluesky connection: fixed an issue where the writing thread would stop working after an unhandled timeout exception.
+
 ## [0.9.4] - 2025-04-06
 
 ### Fixed
