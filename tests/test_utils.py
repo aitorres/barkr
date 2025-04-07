@@ -2,7 +2,9 @@
 Module containing unit tests for Barkr utility functions.
 """
 
-from barkr.utils import extract_urls_from_text
+from unittest.mock import MagicMock, patch
+
+from barkr.utils import extract_urls_from_text, wrap_while_true
 
 
 def test_extract_urls_from_text():
@@ -33,3 +35,24 @@ def test_extract_urls_from_text():
     assert extract_urls_from_text("https://example.com/path/to/resource#fragment") == [
         "https://example.com/path/to/resource#fragment"
     ]
+
+
+def test_wrap_while_true():
+    """
+    Unit test to check that the wrap_while_true function
+    wrapper behaves as expected: runs the callback function
+    and then sleeps.
+    """
+
+    mock_callback = MagicMock()
+    sleep_interval = 2
+
+    wrapped_function = wrap_while_true(mock_callback, sleep_interval)
+
+    with patch("barkr.utils.sleep", side_effect=InterruptedError):
+        try:
+            wrapped_function()
+        except InterruptedError:
+            pass
+
+    mock_callback.assert_called()
