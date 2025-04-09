@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.6] - 2025-04-08
+
+### Fixed
+
+- Bluesky connection: properly handle errors when uploading embed images for posted links.
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.9.5] - 2025-04-07
 
 ### Added
