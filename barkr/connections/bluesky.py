@@ -21,6 +21,7 @@ from atproto_client.models import (  # type: ignore
     AppBskyEmbedVideo,
     AppBskyRichtextFacet,
 )
+from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from atproto_client.models.common import XrpcError  # type: ignore
 from bs4 import BeautifulSoup, Tag
 
@@ -286,18 +287,7 @@ class BlueskyConnection(Connection):
                         image := _get_meta_tag_from_html_metadata(soup, "og:image")
                     ) is not None:
                         # Fetching the image and reuploading to Bluesky
-                        try:
-                            img_data = requests.get(
-                                image,
-                                timeout=REQUESTS_EMBED_GET_TIMEOUT,
-                                headers=REQUESTS_HEADERS,
-                            ).content
-                        except requests.RequestException as e:
-                            logger.warning(
-                                "Failed to fetch image from %s: %s", image, e
-                            )
-                        else:
-                            thumbnail_blob = self.service.upload_blob(img_data).blob
+                        thumbnail_blob = self._upload_image_url_to_atproto_blob(image)
 
                     # Prepare the Embed object
                     embed = AppBskyEmbedExternal.Main(
@@ -380,6 +370,31 @@ class BlueskyConnection(Connection):
             return text
 
         return text.replace(matching_word, url)
+
+    def _upload_image_url_to_atproto_blob(self, image_url: str) -> Optional[BlobRef]:
+        """
+        Given a URL to an image, fetches the image and uploads it
+        to Bluesky as a blob.
+
+        :param image_url: The URL of the image to upload
+        :return: The BlobRef object referencing the uploaded image blob
+        """
+
+        try:
+            img_data = requests.get(
+                image_url,
+                timeout=REQUESTS_EMBED_GET_TIMEOUT,
+                headers=REQUESTS_HEADERS,
+            ).content
+        except requests.RequestException as e:
+            logger.warning("Failed to fetch image from %s: %s", image_url, e)
+            return None
+
+        try:
+            return self.service.upload_blob(img_data).blob
+        except (InvokeTimeoutError, BadRequestError) as e:
+            logger.warning("Failed to upload image to Bluesky (%s): %s", self.name, e)
+            return None
 
 
 def _get_meta_tag_from_html_metadata(
