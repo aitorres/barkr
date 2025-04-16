@@ -32,11 +32,11 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.9.2, <3.14"
-beautifulsoup4 = "^4.13.3"
+beautifulsoup4 = "^4.13.4"
 lxml = "^5.3.2"
 mastodon-py = "^2.0.1"
 tweepy = "^4.15.0"
-atproto = "^0.0.59"
+atproto = "^0.0.60"
 python-telegram-bot = "^21.11.1"
 discord-py = "^2.5.2"
 feedparser = "^6.0.11"
