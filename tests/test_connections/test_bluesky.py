@@ -440,7 +440,7 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
     )
 
     # Mocking requests
-    def mock_requests_get(url: str, _timeout: int, _headers):
+    def mock_requests_get(url: str, *_args, **_kwargs):
         if "valid-url.com" in url:
             html_content = """
             <html>
