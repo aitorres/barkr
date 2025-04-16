@@ -8,6 +8,7 @@ from typing import Optional
 
 import pytest
 from atproto_client.models import AppBskyEmbedExternal  # type: ignore
+from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from bs4 import BeautifulSoup
 
 from barkr.connections import BlueskyConnection, ConnectionMode
@@ -15,6 +16,16 @@ from barkr.connections.bluesky import (
     _get_current_indexed_at,
     _get_meta_tag_from_html_metadata,
 )
+
+
+@dataclass(frozen=True)
+class MockResponse:
+    """
+    Mock class to simulate the response of requests.get
+    """
+
+    content: bytes
+    status_code: int
 
 
 @dataclass(frozen=True)
@@ -402,3 +413,129 @@ def test_get_meta_tag_from_html_metadata() -> None:
     soup = BeautifulSoup(html_content, "html.parser")
     result = _get_meta_tag_from_html_metadata(soup, "og:title")
     assert result == "Title 1"
+
+
+def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test `_generate_post_embed_and_facets` to ensure it correctly generates
+    embed objects and facets for links in the text.
+    """
+
+    # Setup
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.login",
+        lambda *_: None,
+    )
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_: MockFeed([]),
+    )
+
+    connection = BlueskyConnection(
+        "BlueskyClass",
+        [ConnectionMode.WRITE],
+        "test_handle",
+        "test_password",
+    )
+
+    # Mocking requests
+    def mock_requests_get(url: str, _timeout: int, _headers):
+        if "valid-url.com" in url:
+            html_content = """
+            <html>
+                <head>
+                    <title>Valid URL</title>
+                    <meta property="og:description" content="A valid URL description">
+                    <meta property="og:image" content="https://valid-url.com/image.jpg">
+                </head>
+            </html>
+            """
+            return MockResponse(html_content.encode("utf-8"), 200)
+
+        if "no-meta.com" in url:
+            html_content = """
+            <html>
+                <head>
+                    <title>No Meta</title>
+                </head>
+            </html>
+            """
+            return MockResponse(html_content.encode("utf-8"), 200)
+
+        return MockResponse(b"", 404)
+
+    def mock_upload_image_url_to_atproto_blob(_self, image_url: str):
+        if "valid-url.com/image.jpg" in image_url:
+            return BlobRef(ref="mock_blob_ref", mimeType="image/jpeg", size=12345)
+
+        return None
+
+    monkeypatch.setattr("requests.get", mock_requests_get)
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.BlueskyConnection._upload_image_url_to_atproto_blob",
+        mock_upload_image_url_to_atproto_blob,
+    )
+
+    # Test case 1: Text with a valid URL
+    text = "Check this out: https://valid-url.com"
+    embed, facets = (
+        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
+            text
+        )
+    )
+    assert embed is not None
+    assert embed.external.uri == "https://valid-url.com"
+    assert embed.external.title == "Valid URL"
+    assert embed.external.description == "A valid URL description"
+    assert embed.external.thumb.ref == "mock_blob_ref"
+    assert len(facets) == 1
+    assert facets[0].features[0].uri == "https://valid-url.com"
+
+    # Test case 2: Text with a URL that has no metadata
+    text = "Visit this: https://no-meta.com"
+    embed, facets = (
+        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
+            text
+        )
+    )
+    assert embed is not None
+    assert embed.external.uri == "https://no-meta.com"
+    assert embed.external.title == "No Meta"
+    assert embed.external.description == "https://no-meta.com"
+    assert embed.external.thumb is None
+    assert len(facets) == 1
+    assert facets[0].features[0].uri == "https://no-meta.com"
+
+    # Test case 3: Text with an invalid URL
+    text = "This link is broken: https:/invalid-url.com"
+    embed, facets = (
+        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
+            text
+        )
+    )
+    assert embed is None
+    assert len(facets) == 0
+
+    # Test case 4: Text with multiple URLs
+    text = "Multiple links: https://valid-url.com and https://no-meta.com"
+    embed, facets = (
+        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
+            text
+        )
+    )
+    assert embed is not None
+    assert embed.external.uri == "https://valid-url.com"
+    assert len(facets) == 2
+    assert facets[0].features[0].uri == "https://valid-url.com"
+    assert facets[1].features[0].uri == "https://no-meta.com"
+
+    # Test case 5: Text with no URLs
+    text = "This text has no links."
+    embed, facets = (
+        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
+            text
+        )
+    )
+    assert embed is None
+    assert len(facets) == 0
