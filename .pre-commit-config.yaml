@@ -3,27 +3,27 @@ repos:
     hooks:
       - id: isort
         name: Sort imports with isort
-        entry: isort
+        entry: poetry run isort
         language: system
         types: [python]
       - id: black
         name: Apply black formatting
-        entry: black
+        entry: poetry run black
         language: system
         types: [python]
       - id: flake8
         name: Check style with flake8
-        entry: flake8
+        entry: poetry run flake8
         language: system
         types: [python]
       - id: pylint
         name: Lint with Pylint
-        entry: pylint
+        entry: poetry run pylint
         language: system
         types: [python]
         args: [ "-rn", "-sn" ]
       - id: mypy
         name: Check types with mypy
-        entry: mypy
+        entry: poetry run mypy
         language: system
         types: [python]

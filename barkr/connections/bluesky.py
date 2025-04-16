@@ -217,7 +217,7 @@ class BlueskyConnection(Connection):
                 indexed_at = post_details.indexed_at
             except IndexError:
                 indexed_at = _get_current_indexed_at()
-                logger.error(
+                logger.warning(
                     "Failed to fetch post details for Bluesky (%s) post: %s, "
                     "manually setting indexed_at to %s",
                     self.name,
