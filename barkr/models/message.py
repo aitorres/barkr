@@ -25,6 +25,7 @@ class Message:
 
     # Optional metadata
     language: Optional[str] = None
+    label: Optional[str] = None
 
     def has_content(self) -> bool:
         """

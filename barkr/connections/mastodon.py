@@ -104,6 +104,7 @@ class MastodonConnection(Connection):
                 id=status["id"],
                 message=BeautifulSoup(status["content"], "lxml").text,
                 language=status["language"],
+                label=status["spoiler_text"] or None,
             )
             for status in statuses
             if status["in_reply_to_id"] is None and status["reblog"] is None
@@ -125,7 +126,9 @@ class MastodonConnection(Connection):
             while attempts < MASTODON_WRITE_RETRIES:
                 try:
                     posted_message = self.service.status_post(
-                        message.message, language=message.language
+                        message.message,
+                        language=message.language,
+                        spoiler_text=message.label or "",
                     )
                 except MastodonNetworkError as e:
                     if attempts < MASTODON_WRITE_RETRIES - 1:
