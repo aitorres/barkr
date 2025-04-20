@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.7] - 2025-04-20
+
+### Added
+
+- Mastodon connection: added support for reading and writing messages with `label` metadata: content warnings, spoiler tags, etc.
+
+### Changed
+
+- Minor dependency updates
+- Tweaks to logging statements
+- Increased unit test coverage
+
 ## [0.9.6] - 2025-04-08
 
 ### Fixed
