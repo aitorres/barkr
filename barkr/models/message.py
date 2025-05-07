@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Message:
     """
     A generic message object with an ID and a message body,
@@ -39,4 +39,4 @@ class Message:
         :return: True if the message has content, False otherwise
         """
 
-        return bool(self.message)
+        return bool(self.message.strip())
