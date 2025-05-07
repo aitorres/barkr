@@ -2,7 +2,9 @@
 Module to implement unit tests for the Message class.
 """
 
-from barkr.models.message import Message
+import pytest
+
+from barkr.models.message import Message, MessageVisibility
 
 
 def test_message() -> None:
@@ -18,6 +20,7 @@ def test_message() -> None:
     assert message_1.message == "Hello, world!"
     assert message_1.language == "en"
     assert message_1.label == "greeting"
+    assert message_1.visibility == MessageVisibility.PUBLIC
 
     message_2 = Message(
         id="67890",
@@ -27,6 +30,18 @@ def test_message() -> None:
     assert message_2.message == "Bonjour le monde!"
     assert message_2.language is None
     assert message_2.label is None
+    assert message_2.visibility == MessageVisibility.PUBLIC
+
+    message_3 = Message(
+        id="abcde",
+        message="Hola, mundo!",
+        visibility=MessageVisibility.PRIVATE,
+    )
+    assert message_3.id == "abcde"
+    assert message_3.message == "Hola, mundo!"
+    assert message_3.language is None
+    assert message_3.label is None
+    assert message_3.visibility == MessageVisibility.PRIVATE
 
 
 def test_message_has_content() -> None:
@@ -39,3 +54,40 @@ def test_message_has_content() -> None:
     assert not Message(id="12345", message="").has_content()
     assert not Message(id="12345", message="   ").has_content()
     assert not Message(id="12345", message="\n").has_content()
+
+
+def test_message_visibility_from_mastodon() -> None:
+    """
+    Test that we can convert Mastodon visibility strings
+    to MessageVisibility enums as expected.
+    """
+
+    assert (
+        MessageVisibility.from_mastodon_visibility("public") == MessageVisibility.PUBLIC
+    )
+    assert (
+        MessageVisibility.from_mastodon_visibility("unlisted")
+        == MessageVisibility.UNLISTED
+    )
+    assert (
+        MessageVisibility.from_mastodon_visibility("private")
+        == MessageVisibility.PRIVATE
+    )
+    assert (
+        MessageVisibility.from_mastodon_visibility("direct") == MessageVisibility.DIRECT
+    )
+
+    with pytest.raises(ValueError, match="Unknown Mastodon visibility: unknown"):
+        MessageVisibility.from_mastodon_visibility("unknown")
+
+
+def test_message_visibility_to_mastodon() -> None:
+    """
+    Test that we can convert MessageVisibility enums
+    to Mastodon visibility strings as expected.
+    """
+
+    assert MessageVisibility.PUBLIC.to_mastodon_visibility() == "public"
+    assert MessageVisibility.UNLISTED.to_mastodon_visibility() == "unlisted"
+    assert MessageVisibility.PRIVATE.to_mastodon_visibility() == "private"
+    assert MessageVisibility.DIRECT.to_mastodon_visibility() == "direct"

@@ -13,6 +13,7 @@ from mastodon.errors import MastodonNetworkError
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.models import Message
+from barkr.models.message import MessageVisibility
 
 logger = logging.getLogger()
 
@@ -105,6 +106,9 @@ class MastodonConnection(Connection):
                 message=BeautifulSoup(status["content"], "lxml").text,
                 language=status["language"],
                 label=status["spoiler_text"] or None,
+                visibility=MessageVisibility.from_mastodon_visibility(
+                    status["visibility"]
+                ),
             )
             for status in statuses
             if status["in_reply_to_id"] is None and status["reblog"] is None
@@ -129,6 +133,7 @@ class MastodonConnection(Connection):
                         message.message,
                         language=message.language,
                         spoiler_text=message.label or "",
+                        visibility=message.visibility.to_mastodon_visibility(),
                     )
                 except MastodonNetworkError as e:
                     if attempts < MASTODON_WRITE_RETRIES - 1:

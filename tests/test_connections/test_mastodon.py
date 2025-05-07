@@ -9,6 +9,7 @@ from mastodon import MastodonNetworkError
 
 from barkr.connections import ConnectionMode, MastodonConnection
 from barkr.models import Message
+from barkr.models.message import MessageVisibility
 
 
 def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,6 +44,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "987654321",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
             }
         ],
     )
@@ -74,6 +76,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 1",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": None,
                 "spoiler_text": "",
             },
@@ -82,6 +85,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 2",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": None,
                 "spoiler_text": "",
             },
@@ -105,6 +109,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         message: str,
         language: Optional[str] = None,
         spoiler_text: Optional[str] = None,
+        _visibility: Optional[str] = None,
     ) -> dict[str, Any]:
         posted_messages.append(message)
         posted_languages.append(language)
@@ -142,6 +147,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 3",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": None,
                 "spoiler_text": "",
             },
@@ -150,6 +156,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 4",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": None,
                 "spoiler_text": "",
             },
@@ -158,6 +165,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "<p>test message 5</p> <p>test message 6</p>",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": None,
                 "spoiler_text": "",
             },
@@ -187,6 +195,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 3",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": "en",
                 "spoiler_text": "",
             },
@@ -195,6 +204,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 4",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": "es",
                 "spoiler_text": "",
             },
@@ -203,6 +213,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 4",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": None,
                 "spoiler_text": "",
             },
@@ -224,6 +235,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 3",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": None,
                 "spoiler_text": "test label",
             },
@@ -232,6 +244,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "content": "test message 4",
                 "reblog": None,
                 "in_reply_to_id": None,
+                "visibility": "public",
                 "language": None,
                 "spoiler_text": "",
             },
@@ -243,6 +256,65 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             id="52121212", message="test message 3", language=None, label="test label"
         ),
         Message(id="73232323", message="test message 4", language=None, label=None),
+    ]
+
+    # Parses visibility successfully
+    mastodon.min_id = None
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_statuses",
+        lambda *_args, **_kwargs: [
+            {
+                "id": "52121212",
+                "content": "test message 3",
+                "reblog": None,
+                "in_reply_to_id": None,
+                "visibility": "private",
+                "language": None,
+                "spoiler_text": "",
+            },
+            {
+                "id": "73232323",
+                "content": "test message 4",
+                "reblog": None,
+                "in_reply_to_id": None,
+                "visibility": "unlisted",
+                "language": None,
+                "spoiler_text": "",
+            },
+            {
+                "id": "73232323",
+                "content": "test message 4",
+                "reblog": None,
+                "in_reply_to_id": None,
+                "visibility": "direct",
+                "language": None,
+                "spoiler_text": "",
+            },
+        ],
+    )
+    messages = mastodon.read()
+    assert messages == [
+        Message(
+            id="52121212",
+            message="test message 3",
+            language=None,
+            label=None,
+            visibility=MessageVisibility.PRIVATE,
+        ),
+        Message(
+            id="73232323",
+            message="test message 4",
+            language=None,
+            label=None,
+            visibility=MessageVisibility.UNLISTED,
+        ),
+        Message(
+            id="73232323",
+            message="test message 4",
+            language=None,
+            label=None,
+            visibility=MessageVisibility.DIRECT,
+        ),
     ]
 
 
