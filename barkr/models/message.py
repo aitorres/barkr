@@ -63,7 +63,7 @@ class MessageVisibility(Enum):
         return "public"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Message:
     """
     A generic message object with an ID and a message body,
