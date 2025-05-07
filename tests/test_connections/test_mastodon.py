@@ -103,17 +103,19 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     posted_messages: list[str] = []
     posted_languages: list[Optional[str]] = []
     posted_labels: list[Optional[str]] = []
+    posted_visibilities: list[Optional[str]] = []
 
     def status_post_mockup(
         _,
         message: str,
         language: Optional[str] = None,
         spoiler_text: Optional[str] = None,
-        _visibility: Optional[str] = None,
+        visibility: Optional[str] = None,
     ) -> dict[str, Any]:
         posted_messages.append(message)
         posted_languages.append(language)
         posted_labels.append(spoiler_text)
+        posted_visibilities.append(visibility)
 
         return {"id": "12121212" if message == "test message 3" else "23232323"}
 
