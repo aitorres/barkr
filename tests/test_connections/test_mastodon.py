@@ -129,6 +129,11 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             Message(id="ForeignId2", message="test message 4"),
             Message(id="ForeignId3", message="test message 8", language="en"),
             Message(id="ForeignId4", message="test message 7", label="test label"),
+            Message(
+                id="ForeignId5",
+                message="test message 5",
+                visibility=MessageVisibility.UNLISTED,
+            ),
         ]
     )
     assert posted_messages == [
@@ -136,10 +141,18 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "test message 4",
         "test message 8",
         "test message 7",
+        "test message 5",
     ]
-    assert posted_languages == [None, None, "en", None]
-    assert posted_labels == ["", "", "", "test label"]
+    assert posted_languages == [None, None, "en", None, None]
+    assert posted_labels == ["", "", "", "test label", ""]
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
+    assert posted_visibilities == [
+        "public",
+        "public",
+        "public",
+        "public",
+        "unlisted",
+    ]
 
     monkeypatch.setattr(
         "barkr.connections.mastodon.Mastodon.account_statuses",
