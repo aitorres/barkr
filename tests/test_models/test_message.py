@@ -54,6 +54,27 @@ def test_message_has_content() -> None:
     assert not Message(id="12345", message="").has_content()
     assert not Message(id="12345", message="   ").has_content()
     assert not Message(id="12345", message="\n").has_content()
+    assert Message(id="12345", message="Hello, world!", label="greeting").has_content()
+
+    # We skip messages that have private or direct visibility,
+    # even if they have content.
+    assert not Message(
+        id="12345",
+        message="Hello, world!",
+        visibility=MessageVisibility.PRIVATE,
+    ).has_content()
+    assert not Message(
+        id="12345",
+        message="Hello, world!",
+        visibility=MessageVisibility.DIRECT,
+    ).has_content()
+
+    # Test with a message that has no content but is private
+    assert not Message(
+        id="12345",
+        message="",
+        visibility=MessageVisibility.PRIVATE,
+    ).has_content()
 
 
 def test_message_visibility_from_mastodon() -> None:

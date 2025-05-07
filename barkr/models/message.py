@@ -85,11 +85,18 @@ class Message:
         Check if the message has content and therefore can be published.
 
         At this point, the only check is whether the message is empty or not.
+        We also check if the message is direct or private, as these messages
+        might not be aimed for public posting.
+
         In the future, as Messages grow in complexity, this method may be
         extended to check for other conditions (e.g. accounting for
         a message with no text but with an image).
 
         :return: True if the message has content, False otherwise
         """
+
+        # If the message is private or direct, we don't want to post it
+        if self.visibility in (MessageVisibility.PRIVATE, MessageVisibility.DIRECT):
+            return False
 
         return bool(self.message.strip())
