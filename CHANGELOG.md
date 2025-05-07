@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.8] - 2025-05-06
+
+### Added
+
+- Mastodon connection: added support for reading and writing messages with `visibility` metadata: public, unlisted, private, direct.
+  - Note that private and direct messages will not be published to the other connections, to prevent accidental leaks of private messages.
+
+### Changed
+
+- Minor dependency updates
+- Minor tweaks to the `Message` model
+
 ## [0.9.7] - 2025-04-20
 
 ### Added
