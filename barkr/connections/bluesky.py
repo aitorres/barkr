@@ -23,10 +23,12 @@ from atproto_client.models import (  # type: ignore
 )
 from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from atproto_client.models.common import XrpcError  # type: ignore
+from atproto_client.models.string_formats import Did  # type: ignore
+from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace  # type: ignore
 from bs4 import BeautifulSoup, Tag
 
 from barkr.connections.base import Connection, ConnectionMode
-from barkr.models import Message, MessageType
+from barkr.models import Media, Message, MessageType
 from barkr.utils import (
     REQUESTS_EMBED_GET_TIMEOUT,
     REQUESTS_HEADERS,
@@ -130,8 +132,16 @@ class BlueskyConnection(Connection):
                     if record.langs:
                         language = record.langs[0]
 
+                    media_list = self._extract_media_list_from_embed(
+                        post.author.did, embed
+                    )
                     messages.append(
-                        Message(id=post.indexed_at, message=text, language=language)
+                        Message(
+                            id=post.indexed_at,
+                            message=text,
+                            language=language,
+                            media=media_list,
+                        )
                     )
 
         if messages:
@@ -318,6 +328,80 @@ class BlueskyConnection(Connection):
                 )
 
         return embed, facets
+
+    def _extract_media_list_from_embed(
+        self,
+        did: Did,
+        embed: Optional[
+            Union[
+                AppBskyEmbedExternal.Main,
+                AppBskyEmbedRecord.Main,
+                AppBskyEmbedImages.Main,
+                AppBskyEmbedVideo.Main,
+                AppBskyEmbedRecordWithMedia.Main,
+            ]
+        ],
+    ) -> list[Media]:
+        """
+        Given a record's embed object, extracts the media list from
+        any attached images or videos.
+
+        :param embed: The embed object containing the media
+        :return: A list of Media objects
+        """
+
+        media_list: list[Media] = []
+
+        # If there is no embed, we return an empty list
+        if embed is None:
+            return media_list
+
+        blob_refs: list[BlobRef] = []
+
+        # Extracting the blob references from the embed
+        # per embed type
+        if isinstance(embed, AppBskyEmbedVideo.Main):
+            blob_refs.append(embed.video)
+
+        elif isinstance(embed, AppBskyEmbedImages.Main):
+            blob_refs.extend([image.image for image in embed.images])
+
+        # Iterate over the blob references and fetch the blobs with their
+        # respective MIME types; note that if the embed was of a different
+        # type, this iteration should be skipped
+        for blob_ref in blob_refs:
+            if blob_ref is None:
+                continue
+
+            mime_type = blob_ref.mime_type
+            if mime_type is None:
+                continue
+
+            blob_cid = blob_ref.cid
+            try:
+                blob_bytes: bytes = ComAtprotoSyncNamespace(self.service).get_blob(
+                    params={"cid": blob_cid, "did": did}
+                )
+            except (InvokeTimeoutError, BadRequestError) as e:
+                logger.warning(
+                    "Failed to fetch blob from Bluesky (%s) for CID %s: %s",
+                    self.name,
+                    blob_cid,
+                    e,
+                )
+                continue
+
+            if blob_bytes is None:
+                continue
+
+            media_list.append(
+                Media(
+                    mime_type=mime_type,
+                    content=blob_bytes,
+                )
+            )
+
+        return media_list
 
     def _process_text_with_embed(
         self,

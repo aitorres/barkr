@@ -7,7 +7,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import pytest
-from atproto_client.models import AppBskyEmbedExternal  # type: ignore
+from atproto_client.models import (  # type: ignore
+    AppBskyEmbedExternal,
+    AppBskyEmbedImages,
+    AppBskyEmbedRecord,
+    AppBskyEmbedVideo,
+    ComAtprotoRepoStrongRef,
+)
 from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from bs4 import BeautifulSoup
 
@@ -72,6 +78,15 @@ class MockViewer:
 
 
 @dataclass(frozen=True)
+class MockAuthor:
+    """
+    Mock class to simulate a Bluesky author
+    """
+
+    did: str = "did:plc:z72i7hdynmk6r22z27h6tvur"
+
+
+@dataclass(frozen=True)
 class MockPostData:
     """
     Mock class to simulate a Bluesky post data
@@ -79,6 +94,7 @@ class MockPostData:
 
     indexed_at: str
     record: MockRecord
+    author: MockAuthor = MockAuthor()
     viewer: Optional[MockViewer] = None
 
 
@@ -539,3 +555,113 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
     )
     assert embed is None
     assert len(facets) == 0
+
+
+def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Tests that we can extract the media list from a Bluesky embed
+    successfully.
+    """
+
+    # Setup
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.login",
+        lambda *_: None,
+    )
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_: MockFeed([]),
+    )
+
+    connection = BlueskyConnection(
+        "BlueskyClass",
+        [ConnectionMode.READ, ConnectionMode.WRITE],
+        "test_handle",
+        "test_password",
+    )
+    assert connection.name == "BlueskyClass"
+
+    test_did: str = MockAuthor().did
+
+    # Case: empty embed
+    assert (  # pylint: disable=protected-access
+        not connection._extract_media_list_from_embed(test_did, None)
+    )
+
+    # Case: non-supported embeds
+    assert (  # pylint: disable=protected-access
+        not connection._extract_media_list_from_embed(
+            test_did,
+            AppBskyEmbedExternal.Main(
+                external=AppBskyEmbedExternal.External(
+                    uri="https://example.com",
+                    title="Example Title",
+                    description="Example Description",
+                )
+            ),
+        )
+    )
+    assert (  # pylint: disable=protected-access
+        not connection._extract_media_list_from_embed(
+            test_did,
+            AppBskyEmbedRecord.Main(
+                record=ComAtprotoRepoStrongRef.Main(
+                    uri="at://example.com",
+                    cid="example_cid",
+                )
+            ),
+        )
+    )
+
+    # Case: video embed
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.ComAtprotoSyncNamespace.get_blob",
+        lambda *_args, **_kwargs: b"test data",
+    )
+
+    video_embed = AppBskyEmbedVideo.Main(
+        video=BlobRef(
+            ref="bafkreieivl7kursm2qlzlzfq7ktt7f7nvsx7pfgggxerfgnaoim75buopy",
+            mimeType="video/mp4",
+            size=12345,
+        ),
+    )
+    media_list = (
+        connection._extract_media_list_from_embed(  # pylint: disable=protected-access
+            test_did, video_embed
+        )
+    )
+    assert len(media_list) == 1
+    assert media_list[0].mime_type == "video/mp4"
+    assert media_list[0].content == b"test data"
+
+    # Case: image embed
+    image_embed = AppBskyEmbedImages.Main(
+        images=[
+            AppBskyEmbedImages.Image(
+                alt="Image 1",
+                image=BlobRef(
+                    ref="bafkreieivl7kursm2qlzlzfq7ktt7f7nvsx7pfgggxerfgnaoim75buopy",
+                    mimeType="image/jpeg",
+                    size=12345,
+                ),
+            ),
+            AppBskyEmbedImages.Image(
+                alt="Image 2",
+                image=BlobRef(
+                    ref="bafkreieivl7kursm2qlzlzfq7ktt7f7nvsx7pfgggxerfgnaoim75buopy",
+                    mimeType="image/png",
+                    size=67890,
+                ),
+            ),
+        ],
+    )
+    media_list = (
+        connection._extract_media_list_from_embed(  # pylint: disable=protected-access
+            test_did, image_embed
+        )
+    )
+    assert len(media_list) == 2
+    assert media_list[0].mime_type == "image/jpeg"
+    assert media_list[1].mime_type == "image/png"
