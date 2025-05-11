@@ -26,7 +26,7 @@ from atproto_client.models.common import XrpcError  # type: ignore
 from bs4 import BeautifulSoup, Tag
 
 from barkr.connections.base import Connection, ConnectionMode
-from barkr.models import Message
+from barkr.models import Message, MessageType
 from barkr.utils import (
     REQUESTS_EMBED_GET_TIMEOUT,
     REQUESTS_HEADERS,
@@ -45,6 +45,8 @@ class BlueskyConnection(Connection):
 
     Requires handle and an app password for authentication.
     """
+
+    supported_message_type: MessageType = MessageType.TEXT_MEDIA
 
     def __init__(
         self, name: str, modes: list[ConnectionMode], handle: str, password: str

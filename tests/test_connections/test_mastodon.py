@@ -6,9 +6,15 @@ from typing import Any, Optional
 
 import pytest
 from mastodon import MastodonNetworkError
+from mastodon.return_types import MediaAttachment
+from requests.exceptions import RequestException
 
 from barkr.connections import ConnectionMode, MastodonConnection
-from barkr.models import Message
+from barkr.connections.mastodon import (
+    _get_media_list_from_status,
+    _post_media_list_to_mastodon,
+)
+from barkr.models import Media, Message
 from barkr.models.message import MessageVisibility
 
 
@@ -43,6 +49,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             {
                 "id": "987654321",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
             }
@@ -75,6 +82,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "11223344",
                 "content": "test message 1",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": None,
@@ -84,6 +92,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "55667788",
                 "content": "test message 2",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": None,
@@ -104,6 +113,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     posted_languages: list[Optional[str]] = []
     posted_labels: list[Optional[str]] = []
     posted_visibilities: list[Optional[str]] = []
+    posted_media_ids: list[Optional[list[MediaAttachment]]] = []
 
     def status_post_mockup(
         _,
@@ -111,11 +121,13 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         language: Optional[str] = None,
         spoiler_text: Optional[str] = None,
         visibility: Optional[str] = None,
+        media_ids: Optional[list[MediaAttachment]] = None,
     ) -> dict[str, Any]:
         posted_messages.append(message)
         posted_languages.append(language)
         posted_labels.append(spoiler_text)
         posted_visibilities.append(visibility)
+        posted_media_ids.append(media_ids)
 
         return {"id": "12121212" if message == "test message 3" else "23232323"}
 
@@ -146,6 +158,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert posted_languages == [None, None, "en", None, None]
     assert posted_labels == ["", "", "", "test label", ""]
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
+    assert posted_media_ids == [[], [], [], [], []]
     assert posted_visibilities == [
         "public",
         "public",
@@ -161,6 +174,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "12121212",
                 "content": "test message 3",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": None,
@@ -170,6 +184,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "23232323",
                 "content": "test message 4",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": None,
@@ -179,6 +194,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "44554455",
                 "content": "<p>test message 5</p> <p>test message 6</p>",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": None,
@@ -188,6 +204,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "44554458",
                 "content": "<p>test message 7</p> <p>test message 8</p>",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": "13245678945613",
                 "language": None,
                 "spoiler_text": "",
@@ -209,6 +226,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "52121212",
                 "content": "test message 3",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": "en",
@@ -218,6 +236,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "73232323",
                 "content": "test message 4",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": "es",
@@ -227,6 +246,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "93232323",
                 "content": "test message 4",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": None,
@@ -234,8 +254,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             },
         ],
     )
-    messages = mastodon.read()
-    assert messages == [
+    assert mastodon.read() == [
         Message(id="52121212", message="test message 3", language="en", label=None),
         Message(id="73232323", message="test message 4", language="es", label=None),
         Message(id="93232323", message="test message 4", language=None, label=None),
@@ -249,6 +268,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "52121212",
                 "content": "test message 3",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": None,
@@ -258,6 +278,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "73232323",
                 "content": "test message 4",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
                 "language": None,
@@ -265,8 +286,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             },
         ],
     )
-    messages = mastodon.read()
-    assert messages == [
+    assert mastodon.read() == [
         Message(
             id="52121212", message="test message 3", language=None, label="test label"
         ),
@@ -282,6 +302,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "52121212",
                 "content": "test message 3",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "private",
                 "language": None,
@@ -291,6 +312,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "73232323",
                 "content": "test message 4",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "unlisted",
                 "language": None,
@@ -300,6 +322,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "id": "73232323",
                 "content": "test message 4",
                 "reblog": None,
+                "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "direct",
                 "language": None,
@@ -307,8 +330,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             },
         ],
     )
-    messages = mastodon.read()
-    assert messages == [
+    assert mastodon.read() == [
         Message(
             id="52121212",
             message="test message 3",
@@ -441,3 +463,169 @@ def test_mastodon_handles_retries_failure(monkeypatch: pytest.MonkeyPatch) -> No
                 Message(id="ForeignId2", message="test message 4"),
             ]
         )
+
+
+def test_post_media_list_to_mastodon(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test that the helper function _post_media_list_to_mastodon
+    correctly prepares and posts media to Mastodon
+    """
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_verify_credentials",
+        lambda _: {"id": "1234567890"},
+    )
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_statuses",
+        lambda *_args, **_kwargs: [],
+    )
+
+    mastodon = MastodonConnection(
+        "MastodonClass",
+        [ConnectionMode.WRITE],
+        "test_token",
+        "https://example.com",
+    )
+
+    mastodon_service = mastodon.service
+    assert mastodon_service is not None
+
+    # Case: empty media list
+    assert not _post_media_list_to_mastodon(mastodon_service, [])
+
+    # Case: invalid media list
+    assert not _post_media_list_to_mastodon(
+        mastodon_service, [Media("invalid/type", b"invalid content")]
+    )
+
+    # Case: valid media list
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.media_post",
+        lambda *_args, **_kwargs: MediaAttachment(
+            id="1234567890",
+            type="image/jpeg",
+            url="https://example.com/media/1234567890",
+        ),
+    )
+
+    media_list = [
+        Media("image/jpeg", b"test content 1"),
+        Media("image/png", b"test content 2"),
+    ]
+
+    media_ids = _post_media_list_to_mastodon(mastodon_service, media_list)
+
+    assert len(media_ids) == 2
+
+    # Case: there is an exception for one of the media
+    def mock_media_post(*_args, **kwargs) -> MediaAttachment:
+        media_file = kwargs.get("media_file")
+        mime_type = kwargs.get("mime_type")
+
+        if media_file == b"test content 1":
+            raise RequestException("Test exception")
+
+        return MediaAttachment(
+            id="1234567890", type=mime_type, url="https://example.com/media/1234567890"
+        )
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.media_post",
+        mock_media_post,
+    )
+
+    media_list = [
+        Media("image/jpeg", b"test content 1"),
+        Media("image/png", b"test content 2"),
+    ]
+
+    media_ids = _post_media_list_to_mastodon(mastodon_service, media_list)
+
+    assert len(media_ids) == 1
+    assert media_ids[0].id == "1234567890"
+    assert media_ids[0].type == "image/png"
+    assert media_ids[0].url == "https://example.com/media/1234567890"
+
+
+def test_get_media_list_from_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test that the helper function _get_media_list_from_status
+    correctly extracts media from a Mastodon status
+    """
+
+    # Case: empty media list
+    assert not _get_media_list_from_status({"media_attachments": []})
+
+    # Case: unsupported media type
+    status = {
+        "id": "1234567890",
+        "media_attachments": [
+            {"type": "unsupported", "url": "https://example.com/media/1234567890"},
+        ],
+    }
+    assert not _get_media_list_from_status(status)
+
+    # Case: valid media list
+    monkeypatch.setattr(
+        "requests.get",
+        lambda url, *_args, **_kwargs: type(
+            "Response", (object,), {"content": b"test content", "status_code": 200}
+        ),
+    )
+    status = {
+        "media_attachments": [
+            {"type": "image", "url": "https://example.com/media/1234567890.jpg"},
+            {"type": "image", "url": "https://example.com/media/0987654321.png"},
+        ]
+    }
+
+    media_list = _get_media_list_from_status(status)
+
+    assert len(media_list) == 2
+    assert media_list[0].mime_type == "image/jpeg"
+    assert media_list[0].content == b"test content"
+    assert media_list[1].mime_type == "image/png"
+    assert media_list[1].content == b"test content"
+
+    # Case: mime type cannot be determined from URL
+    monkeypatch.setattr(
+        "requests.get",
+        lambda url, *_args, **_kwargs: type(
+            "Response", (object,), {"content": b"test content", "status_code": 200}
+        ),
+    )
+    status = {
+        "media_attachments": [
+            {"type": "image", "url": "https://example.com/media/1234567890"},
+            {"type": "image", "url": "https://example.com/media/0987654321.png"},
+        ]
+    }
+    media_list = _get_media_list_from_status(status)
+    assert len(media_list) == 1
+    assert media_list[0].mime_type == "image/png"
+    assert media_list[0].content == b"test content"
+
+    # Case: there's an exception for one of the media
+    def mock_get(*_args, **_kwargs) -> Any:
+        if _args[0] == "https://example.com/media/1234567890.jpg":
+            raise RequestException("Test exception")
+
+        return type(
+            "Response", (object,), {"content": b"test content", "status_code": 200}
+        )
+
+    monkeypatch.setattr("requests.get", mock_get)
+
+    status = {
+        "media_attachments": [
+            {"type": "image", "url": "https://example.com/media/1234567890.jpg"},
+            {"type": "image", "url": "https://example.com/media/0987654321.png"},
+        ]
+    }
+
+    media_list = _get_media_list_from_status(status)
+
+    assert len(media_list) == 1
+    assert media_list[0].mime_type == "image/png"
+    assert media_list[0].content == b"test content"
