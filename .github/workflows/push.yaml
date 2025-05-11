@@ -17,7 +17,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: x64
       - name: Install Poetry
-        uses: snok/install-poetry@v1.3.0
+        uses: snok/install-poetry@v1.4.1
         with:
           virtualenvs-create: true
           virtualenvs-in-project: true
@@ -36,4 +36,4 @@ jobs:
       - name: Run tests with pytest
         run: |
           source .venv/bin/activate
-          pytest --cov=barkr --cov-fail-under=82 --cov-report=term-missing -vvv
+          pytest --cov=barkr --cov-fail-under=85 --cov-report=term-missing -vvv
