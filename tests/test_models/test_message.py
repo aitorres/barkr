@@ -4,7 +4,9 @@ Module to implement unit tests for the Message class.
 
 import pytest
 
+from barkr.models.media import Media
 from barkr.models.message import Message, MessageVisibility
+from barkr.models.message_type import MessageType
 
 
 def test_message() -> None:
@@ -50,11 +52,59 @@ def test_message_has_content() -> None:
     tells if the Message contains content or not.
     """
 
-    assert Message(id="12345", message="Hello, world!").has_content()
-    assert not Message(id="12345", message="").has_content()
-    assert not Message(id="12345", message="   ").has_content()
-    assert not Message(id="12345", message="\n").has_content()
-    assert Message(id="12345", message="Hello, world!", label="greeting").has_content()
+    # Base case: check is done for a text-only connection
+    assert Message(id="12345", message="Hello, world!").has_content(
+        MessageType.TEXT_ONLY
+    )
+    assert not Message(id="12345", message="").has_content(MessageType.TEXT_ONLY)
+    assert not Message(id="12345", message="   ").has_content(MessageType.TEXT_ONLY)
+    assert not Message(id="12345", message="\n").has_content(MessageType.TEXT_ONLY)
+    assert Message(id="12345", message="Hello, world!", label="greeting").has_content(
+        MessageType.TEXT_ONLY
+    )
+
+    # Check for a message with a media object
+    media_list = [
+        Media(mime_type="image/jpeg", content=b"image data"),
+        Media(mime_type="video/mp4", content=b"video data"),
+    ]
+    assert Message(id="12345", message="Hello, world!", media=media_list).has_content(
+        MessageType.TEXT_MEDIA
+    )
+    assert Message(id="12345", message="", media=media_list).has_content(
+        MessageType.TEXT_MEDIA
+    )
+    assert Message(id="12345", message="   ", media=media_list).has_content(
+        MessageType.TEXT_MEDIA
+    )
+    assert Message(id="12345", message="\n", media=media_list).has_content(
+        MessageType.TEXT_MEDIA
+    )
+
+    invalid_media_list = [
+        Media(mime_type="text/plain", content=b"invalid media"),
+        Media(mime_type="application/json", content=b"invalid media"),
+    ]
+    assert Message(
+        id="12345", message="Hello, world!", media=invalid_media_list
+    ).has_content(MessageType.TEXT_MEDIA)
+    assert not Message(id="12345", message="", media=invalid_media_list).has_content(
+        MessageType.TEXT_MEDIA
+    )
+    assert not Message(id="12345", message="   ", media=invalid_media_list).has_content(
+        MessageType.TEXT_MEDIA
+    )
+
+    empty_media_list: list[Media] = []
+    assert Message(
+        id="12345", message="Hello, world!", media=empty_media_list
+    ).has_content(MessageType.TEXT_MEDIA)
+    assert not Message(id="12345", message="", media=empty_media_list).has_content(
+        MessageType.TEXT_MEDIA
+    )
+    assert not Message(id="12345", message="   ", media=empty_media_list).has_content(
+        MessageType.TEXT_MEDIA
+    )
 
     # We skip messages that have private or direct visibility,
     # even if they have content.
@@ -62,19 +112,19 @@ def test_message_has_content() -> None:
         id="12345",
         message="Hello, world!",
         visibility=MessageVisibility.PRIVATE,
-    ).has_content()
+    ).has_content(MessageType.TEXT_ONLY)
     assert not Message(
         id="12345",
         message="Hello, world!",
         visibility=MessageVisibility.DIRECT,
-    ).has_content()
+    ).has_content(MessageType.TEXT_ONLY)
 
     # Test with a message that has no content but is private
     assert not Message(
         id="12345",
         message="",
         visibility=MessageVisibility.PRIVATE,
-    ).has_content()
+    ).has_content(MessageType.TEXT_ONLY)
 
 
 def test_message_visibility_from_mastodon() -> None:

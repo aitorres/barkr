@@ -7,9 +7,12 @@ well as (potentially) other metadata that each connection can decide
 whether or not to take into account.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+
+from barkr.models.media import Media
+from barkr.models.message_type import MessageType
 
 
 class MessageVisibility(Enum):
@@ -75,12 +78,16 @@ class Message:
     id: str
     message: str
 
+    # Messages can optionally have media attached to them, which are
+    # stored in a list per their byte representation and MIME type.
+    media: list[Media] = field(default_factory=list)
+
     # Optional metadata
     language: Optional[str] = None
     label: Optional[str] = None
     visibility: MessageVisibility = MessageVisibility.PUBLIC
 
-    def has_content(self) -> bool:
+    def has_content(self, supported_message_type: MessageType) -> bool:
         """
         Check if the message has content and therefore can be published.
 
@@ -99,4 +106,16 @@ class Message:
         if self.visibility in (MessageVisibility.PRIVATE, MessageVisibility.DIRECT):
             return False
 
-        return bool(self.message.strip())
+        has_text = bool(self.message.strip())
+
+        # If we support media, we can post a message with no text
+        # as long as it has media
+        if supported_message_type == MessageType.TEXT_MEDIA:
+            valid_media = [m for m in self.media if m.is_valid()]
+            has_media = len(valid_media) > 0
+
+            # If we have media, we can post the message
+            return has_text or has_media
+
+        # By default, we only support text messages
+        return has_text
