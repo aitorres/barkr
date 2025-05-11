@@ -377,7 +377,14 @@ class BlueskyConnection(Connection):
             if mime_type is None:
                 continue
 
-            blob_cid = blob_ref.cid
+            blob_cid = blob_ref.cid.encode()
+            logger.info(
+                "Fetching blob from Bluesky (%s) for CID %s",
+                self.name,
+                blob_cid,
+            )
+
+            # Fetching the blob from Bluesky
             try:
                 blob_bytes: bytes = ComAtprotoSyncNamespace(self.service).get_blob(
                     params={"cid": blob_cid, "did": did}
