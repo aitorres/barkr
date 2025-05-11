@@ -26,8 +26,12 @@ class Media:
     to a social media network.
     """
 
+    # Required attributes to represent a media object
     mime_type: str
     content: bytes
+
+    # Optional metadata
+    alt_text: str = ""
 
     def is_valid(self) -> bool:
         """

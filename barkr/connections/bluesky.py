@@ -356,20 +356,22 @@ class BlueskyConnection(Connection):
         if embed is None:
             return media_list
 
-        blob_refs: list[BlobRef] = []
+        blob_refs_with_alt_text: list[tuple[BlobRef, str]] = []
 
         # Extracting the blob references from the embed
         # per embed type
         if isinstance(embed, AppBskyEmbedVideo.Main):
-            blob_refs.append(embed.video)
+            blob_refs_with_alt_text.append((embed.video, embed.alt or ""))
 
         elif isinstance(embed, AppBskyEmbedImages.Main):
-            blob_refs.extend([image.image for image in embed.images])
+            blob_refs_with_alt_text.extend(
+                [(image.image, image.alt) for image in embed.images]
+            )
 
         # Iterate over the blob references and fetch the blobs with their
         # respective MIME types; note that if the embed was of a different
         # type, this iteration should be skipped
-        for blob_ref in blob_refs:
+        for blob_ref, alt_text in blob_refs_with_alt_text:
             if blob_ref is None:
                 continue
 
@@ -405,6 +407,7 @@ class BlueskyConnection(Connection):
                 Media(
                     mime_type=mime_type,
                     content=blob_bytes,
+                    alt_text=alt_text,
                 )
             )
 

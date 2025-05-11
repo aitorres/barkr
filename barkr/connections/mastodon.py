@@ -194,7 +194,9 @@ def _post_media_list_to_mastodon(
         # Uploading the media to Mastodon
         try:
             media_attachment = service.media_post(
-                media_file=media.content, mime_type=media.mime_type
+                media_file=media.content,
+                mime_type=media.mime_type,
+                description=media.alt_text,
             )
         except requests.RequestException as e:
             logger.error("Failed to upload media: %s", e)
@@ -250,9 +252,11 @@ def _get_media_list_from_status(status: dict[str, Any]) -> list[Media]:
                 )
                 continue
 
+            alt_text = media_attachment["description"] or ""
             media = Media(
                 mime_type=mime_type,
                 content=media_content,
+                alt_text=alt_text,
             )
 
             if media.is_valid():

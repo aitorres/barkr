@@ -575,8 +575,16 @@ def test_get_media_list_from_status(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     status = {
         "media_attachments": [
-            {"type": "image", "url": "https://example.com/media/1234567890.jpg"},
-            {"type": "image", "url": "https://example.com/media/0987654321.png"},
+            {
+                "type": "image",
+                "description": "text",
+                "url": "https://example.com/media/1234567890.jpg",
+            },
+            {
+                "type": "image",
+                "description": "text",
+                "url": "https://example.com/media/0987654321.png",
+            },
         ]
     }
 
@@ -597,8 +605,16 @@ def test_get_media_list_from_status(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     status = {
         "media_attachments": [
-            {"type": "image", "url": "https://example.com/media/1234567890"},
-            {"type": "image", "url": "https://example.com/media/0987654321.png"},
+            {
+                "type": "image",
+                "description": "text",
+                "url": "https://example.com/media/1234567890",
+            },
+            {
+                "type": "image",
+                "description": "text",
+                "url": "https://example.com/media/0987654321.png",
+            },
         ]
     }
     media_list = _get_media_list_from_status(status)
@@ -619,8 +635,16 @@ def test_get_media_list_from_status(monkeypatch: pytest.MonkeyPatch) -> None:
 
     status = {
         "media_attachments": [
-            {"type": "image", "url": "https://example.com/media/1234567890.jpg"},
-            {"type": "image", "url": "https://example.com/media/0987654321.png"},
+            {
+                "type": "image",
+                "description": "text",
+                "url": "https://example.com/media/1234567890.jpg",
+            },
+            {
+                "type": "image",
+                "description": "text",
+                "url": "https://example.com/media/0987654321.png",
+            },
         ]
     }
 
@@ -629,3 +653,4 @@ def test_get_media_list_from_status(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(media_list) == 1
     assert media_list[0].mime_type == "image/png"
     assert media_list[0].content == b"test content"
+    assert media_list[0].alt_text == "text"
