@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.0] - 2025-05-11
+
+aka the media update!
+
+### Added
+
+- Implemented support for storing media (images, videos) in the `Message` model, with descriptive or alt text.
+  - Connections can decide whether to support text-only messages or text+media messages.
+  - Empty message filter now considers supported message type when deciding if a message is empty (e.g. a message with only media is not empty if the connection supports media).
+- Bluesky connection: added support for reading media from messages.
+- Mastodon connection: added support for reading media from messages, and adding media to messages.
+
+### Changed
+
+- Minor dependency updates
+- Minor tweaks to Github Actions pipeline
+
 ## [0.9.8] - 2025-05-06
 
 ### Added
