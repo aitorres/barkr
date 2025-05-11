@@ -6,7 +6,7 @@ and related code.
 import pytest
 
 from barkr.connections import Connection, ConnectionMode
-from barkr.models import Message
+from barkr.models import Media, Message, MessageType
 
 
 def test_connection() -> None:
@@ -275,3 +275,74 @@ def test_connection_does_not_write_empty_message(
     )
     assert posted_message_ids == ["2", "3"]
     assert connection.posted_message_ids == {"2", "3"}
+
+    # Messages without text content but with media should be posted
+    # if the connection supports it
+    connection.supported_message_type = MessageType.TEXT_MEDIA
+    media_list = [
+        Message(
+            id="4",
+            message="",
+            media=[Media(mime_type="image/jpeg", content=b"image data")],
+        ),
+        Message(
+            id="5",
+            message="",
+            media=[Media(mime_type="video/mp4", content=b"video data")],
+        ),
+    ]
+    connection.write(media_list)
+    assert posted_message_ids == ["2", "3", "4", "5"]
+    assert connection.posted_message_ids == {"2", "3", "4", "5"}
+
+    # Messages with text content and media should also be posted
+    media_list = [
+        Message(
+            id="6",
+            message="test message 6",
+            media=[Media(mime_type="image/jpeg", content=b"image data")],
+        ),
+        Message(
+            id="7",
+            message="test message 7",
+            media=[Media(mime_type="video/mp4", content=b"video data")],
+        ),
+    ]
+    connection.write(media_list)
+    assert posted_message_ids == ["2", "3", "4", "5", "6", "7"]
+    assert connection.posted_message_ids == {"2", "3", "4", "5", "6", "7"}
+
+    # If the connection doesn't support media, we should skip
+    # the messages with just media, and post the ones with text
+    connection.supported_message_type = MessageType.TEXT_ONLY
+    media_list = [
+        Message(
+            id="8",
+            message="",
+            media=[Media(mime_type="image/jpeg", content=b"image data")],
+        ),
+        Message(
+            id="9",
+            message="",
+            media=[Media(mime_type="video/mp4", content=b"video data")],
+        ),
+    ]
+    connection.write(media_list)
+    assert posted_message_ids == ["2", "3", "4", "5", "6", "7"]
+    assert connection.posted_message_ids == {"2", "3", "4", "5", "6", "7"}
+
+    media_list = [
+        Message(
+            id="10",
+            message="test message 10",
+            media=[Media(mime_type="image/jpeg", content=b"image data")],
+        ),
+        Message(
+            id="11",
+            message="test message 11",
+            media=[Media(mime_type="video/mp4", content=b"video data")],
+        ),
+    ]
+    connection.write(media_list)
+    assert posted_message_ids == ["2", "3", "4", "5", "6", "7", "10", "11"]
+    assert connection.posted_message_ids == {"2", "3", "4", "5", "6", "7", "10", "11"}

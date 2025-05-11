@@ -6,7 +6,7 @@ connections to social media networks, chat services, etc.
 import logging
 from enum import Enum
 
-from barkr.models import Message
+from barkr.models import Message, MessageType
 
 logger = logging.getLogger()
 
@@ -35,6 +35,7 @@ class Connection:
     name: str
     modes: list[ConnectionMode]
     posted_message_ids: set[str]
+    supported_message_type: MessageType = MessageType.TEXT_ONLY
 
     def __init__(self, name: str, modes: list[ConnectionMode]) -> None:
         """
@@ -94,7 +95,9 @@ class Connection:
 
         # Discarding any empty messages
         messages_with_content = [
-            message for message in messages if message.has_content()
+            message
+            for message in messages
+            if message.has_content(self.supported_message_type)
         ]
 
         if not messages_with_content:
