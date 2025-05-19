@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import pytest
+from atproto_client.exceptions import BadRequestError  # type: ignore
 from atproto_client.models import (  # type: ignore
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
@@ -16,12 +17,22 @@ from atproto_client.models import (  # type: ignore
 )
 from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from bs4 import BeautifulSoup
+from requests.exceptions import RequestException
 
 from barkr.connections import BlueskyConnection, ConnectionMode
 from barkr.connections.bluesky import (
     _get_current_indexed_at,
     _get_meta_tag_from_html_metadata,
 )
+
+
+@dataclass(frozen=True)
+class MockUploadBlobResponse:
+    """
+    Mock class to simulate the response of atproto_client.Client.upload_blob
+    """
+
+    blob: BlobRef
 
 
 @dataclass(frozen=True)
@@ -665,3 +676,100 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(media_list) == 2
     assert media_list[0].mime_type == "image/jpeg"
     assert media_list[1].mime_type == "image/png"
+
+    # Case: exception when getting blob
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.ComAtprotoSyncNamespace.get_blob",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(BadRequestError()),
+    )
+    video_embed = AppBskyEmbedVideo.Main(
+        video=BlobRef(
+            ref="bafkreieivl7kursm2qlzlzfq7ktt7f7nvsx7pfgggxerfgnaoim75buopy",
+            mimeType="video/mp4",
+            size=12345,
+        ),
+    )
+    media_list = (
+        connection._extract_media_list_from_embed(  # pylint: disable=protected-access
+            test_did, video_embed
+        )
+    )
+    assert len(media_list) == 0
+
+
+def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test that the _upload_image_url_to_atproto_blob method correctly handles
+    retrieving an image from a URL and uploading it as a blob to Atproto.
+    """
+
+    # Setup
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.login",
+        lambda *_: None,
+    )
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_: MockFeed([]),
+    )
+
+    conn = BlueskyConnection(
+        "BlueskyClass",
+        [ConnectionMode.WRITE],
+        "test_handle",
+        "test_password",
+    )
+
+    # Case: Successful image retrieval and upload
+    monkeypatch.setattr(
+        "requests.get", lambda *args, **_kargs: MockResponse(b"image_content", 200)
+    )
+    monkeypatch.setattr(
+        "atproto_client.Client.upload_blob",
+        lambda *_args, **_kwargs: MockUploadBlobResponse(
+            BlobRef(
+                ref="test_ref",
+                mimeType="image/jpeg",
+                size=123,
+            )
+        ),
+    )
+
+    blob_ref = (
+        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
+            "https://example.com/image.jpg"
+        )
+    )
+    assert blob_ref is not None
+    assert blob_ref.ref == "test_ref"
+    assert blob_ref.mime_type == "image/jpeg"
+
+    # Case: Failed image retrieval
+    def mock_failed_request_get(*_args, **_kwargs):
+        raise RequestException("Failed to get image")
+
+    monkeypatch.setattr("requests.get", mock_failed_request_get)
+
+    blob_ref = (
+        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
+            "https://example.com/bad-image.jpg"
+        )
+    )
+    assert blob_ref is None
+
+    # Case: Successful image retrieval but failed upload
+    monkeypatch.setattr(
+        "requests.get", lambda *args, **_kargs: MockResponse(b"image_content", 200)
+    )
+    monkeypatch.setattr(
+        "atproto_client.Client.upload_blob",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(BadRequestError()),
+    )
+
+    blob_ref = (
+        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
+            "https://example.com/image.jpg"
+        )
+    )
+    assert blob_ref is None

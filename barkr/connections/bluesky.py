@@ -400,16 +400,14 @@ class BlueskyConnection(Connection):
                 )
                 continue
 
-            if blob_bytes is None:
-                continue
-
-            media_list.append(
-                Media(
-                    mime_type=mime_type,
-                    content=blob_bytes,
-                    alt_text=alt_text,
+            if blob_bytes is not None:
+                media_list.append(
+                    Media(
+                        mime_type=mime_type,
+                        content=blob_bytes,
+                        alt_text=alt_text,
+                    )
                 )
-            )
 
         return media_list
 
