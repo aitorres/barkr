@@ -132,15 +132,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     Basic unit tests for the BlueskyConnection class
     """
 
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.login",
-        lambda *_: None,
-    )
-
-    monkeypatch.setattr(
-        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
-        lambda *_: MockFeed([]),
-    )
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     bluesky_no_initial_messages = BlueskyConnection(
         "BlueskyClass",
@@ -281,15 +273,7 @@ def test_bluesky_reconstructs_embeds_successfully(
     # so we preserve the original `isinstance` function
     original_isinstance = isinstance
 
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.login",
-        lambda *_: None,
-    )
-
-    monkeypatch.setattr(
-        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
-        lambda *_: MockFeed([]),
-    )
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     bsky = BlueskyConnection(
         "BlueskyClass",
@@ -449,15 +433,7 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
     """
 
     # Setup
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.login",
-        lambda *_: None,
-    )
-
-    monkeypatch.setattr(
-        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
-        lambda *_: MockFeed([]),
-    )
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
         "BlueskyClass",
@@ -578,15 +554,7 @@ def test_generate_post_embed_and_facets_timeout_cases(
     """
 
     # Setup
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.login",
-        lambda *_: None,
-    )
-
-    monkeypatch.setattr(
-        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
-        lambda *_: MockFeed([]),
-    )
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
         "BlueskyClass",
@@ -660,15 +628,7 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
     """
 
     # Setup
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.login",
-        lambda *_: None,
-    )
-
-    monkeypatch.setattr(
-        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
-        lambda *_: MockFeed([]),
-    )
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
         "BlueskyClass",
@@ -789,15 +749,7 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
     """
 
     # Setup
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.login",
-        lambda *_: None,
-    )
-
-    monkeypatch.setattr(
-        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
-        lambda *_: MockFeed([]),
-    )
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     conn = BlueskyConnection(
         "BlueskyClass",
@@ -858,3 +810,20 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
         )
     )
     assert blob_ref is None
+
+
+def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Setups the monkeypatch calls to enable testing the Bluesky connection
+    without actually connecting to the Bluesky API.
+    """
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.login",
+        lambda *_: None,
+    )
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_: MockFeed([]),
+    )
