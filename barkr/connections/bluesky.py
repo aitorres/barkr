@@ -269,7 +269,31 @@ class BlueskyConnection(Connection):
         facets: list[AppBskyRichtextFacet.Main] = []
 
         for url in extract_urls_from_text(text):
-            # Hit the URL to check if it is valid and extract title and description
+            # Create a facet for the link. We do this first to always
+            # have a facet for the link, even if we fail to create the embed
+            # (e.g. if we can't fetch the URL metadata)
+            url_index = text.index(url)
+            facets.append(
+                AppBskyRichtextFacet.Main(
+                    features=[
+                        AppBskyRichtextFacet.Link(
+                            uri=url,
+                        )
+                    ],
+                    index=AppBskyRichtextFacet.ByteSlice(
+                        byte_start=len(text[:url_index].encode("utf-8")),
+                        byte_end=len(text[: url_index + len(url)].encode("utf-8")),
+                    ),
+                )
+            )
+
+            # If we already have an embed, we don't need to create another one
+            # for the same post
+            if embed is not None:
+                continue
+
+            # If we haven't created an embed yet, hit the URL to check if it
+            # is valid and extract title, thumbnail and description
             try:
                 # Using a very short timeout, we don't want to spend too much time here
                 response = requests.get(
@@ -279,51 +303,34 @@ class BlueskyConnection(Connection):
                 continue
 
             if response.status_code == 200:
-                if embed is None:
-                    # Parse the response to extract title, description and image
-                    soup = BeautifulSoup(response.content, "html.parser")
-                    title = soup.title.string if soup.title else urlparse(url).netloc
-                    description = url
-                    thumbnail_blob = None
+                # Parse the response to extract title, description and image
+                soup = BeautifulSoup(response.content, "html.parser")
+                title = soup.title.string if soup.title else urlparse(url).netloc
+                description = url
+                thumbnail_blob = None
 
-                    # Extract the description from the meta tag
-                    if (
-                        meta_description := _get_meta_tag_from_html_metadata(
-                            soup, "og:description"
-                        )
-                    ) is not None:
-                        description = meta_description
-
-                    # Extract the image from the meta tag
-                    if (
-                        image := _get_meta_tag_from_html_metadata(soup, "og:image")
-                    ) is not None:
-                        # Fetching the image and reuploading to Bluesky
-                        thumbnail_blob = self._upload_image_url_to_atproto_blob(image)
-
-                    # Prepare the Embed object
-                    embed = AppBskyEmbedExternal.Main(
-                        external=AppBskyEmbedExternal.External(
-                            uri=url,
-                            title=title,
-                            description=description,
-                            thumb=thumbnail_blob,
-                        )
+                # Extract the description from the meta tag
+                if (
+                    meta_description := _get_meta_tag_from_html_metadata(
+                        soup, "og:description"
                     )
+                ) is not None:
+                    description = meta_description
 
-                # Create a facet for the link
-                url_index = text.index(url)
-                facets.append(
-                    AppBskyRichtextFacet.Main(
-                        features=[
-                            AppBskyRichtextFacet.Link(
-                                uri=url,
-                            )
-                        ],
-                        index=AppBskyRichtextFacet.ByteSlice(
-                            byte_start=len(text[:url_index].encode("utf-8")),
-                            byte_end=len(text[: url_index + len(url)].encode("utf-8")),
-                        ),
+                # Extract the image from the meta tag
+                if (
+                    image := _get_meta_tag_from_html_metadata(soup, "og:image")
+                ) is not None:
+                    # Fetching the image and reuploading to Bluesky
+                    thumbnail_blob = self._upload_image_url_to_atproto_blob(image)
+
+                # Prepare the Embed object
+                embed = AppBskyEmbedExternal.Main(
+                    external=AppBskyEmbedExternal.External(
+                        uri=url,
+                        title=title,
+                        description=description,
+                        thumb=thumbnail_blob,
                     )
                 )
 

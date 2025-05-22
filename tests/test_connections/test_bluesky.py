@@ -568,6 +568,91 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
     assert len(facets) == 0
 
 
+def test_generate_post_embed_and_facets_timeout_cases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Test `_generate_post_embed_and_facets` to ensure it correctly generates
+    embed objects and facets for links in the text whenever possible
+    when facing timeouts on metadata requests.
+    """
+
+    # Setup
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.login",
+        lambda *_: None,
+    )
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_: MockFeed([]),
+    )
+
+    connection = BlueskyConnection(
+        "BlueskyClass",
+        [ConnectionMode.WRITE],
+        "test_handle",
+        "test_password",
+    )
+
+    def mock_upload_image_url_to_atproto_blob(_self, image_url: str):
+        if "valid-url.com/image.jpg" in image_url:
+            return BlobRef(ref="mock_blob_ref", mimeType="image/jpeg", size=12345)
+
+        return None
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.BlueskyConnection._upload_image_url_to_atproto_blob",
+        mock_upload_image_url_to_atproto_blob,
+    )
+
+    # Test case 1: request fails, but we still want to get
+    # the URL facet
+    def mock_requests_get_fail(url: str, *_args, **_kwargs):
+        if "url-that-times-out.com" in url:
+            raise RequestException("Failed to fetch metadata")
+
+        html_content = """
+            <html>
+                <head>
+                    <title>Valid URL</title>
+                    <meta property="og:description" content="A valid URL description">
+                    <meta property="og:image" content="https://valid-url.com/image.jpg">
+                </head>
+            </html>
+        """
+        return MockResponse(html_content.encode("utf-8"), 200)
+
+    monkeypatch.setattr("requests.get", mock_requests_get_fail)
+
+    text = "Check this out: https://url-that-times-out.com"
+    embed, facets = (
+        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
+            text
+        )
+    )
+    assert embed is None
+    assert len(facets) == 1
+    assert facets[0].features[0].uri == "https://url-that-times-out.com"
+
+    # Test case 2: the first URL times out, but the second one
+    # is valid, so we should get two facets, and an embed for
+    # the second URL
+    text = "I have two links: https://url-that-times-out.com and https://valid-url.com"
+    embed, facets = (
+        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
+            text
+        )
+    )
+    assert embed is not None
+    assert embed.external.uri == "https://valid-url.com"
+    assert embed.external.title == "Valid URL"
+    assert embed.external.description == "A valid URL description"
+
+    assert facets[0].features[0].uri == "https://url-that-times-out.com"
+    assert facets[1].features[0].uri == "https://valid-url.com"
+
+
 def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Tests that we can extract the media list from a Bluesky embed
