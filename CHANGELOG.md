@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.1] - 2025-05-21
+
+### Changed
+
+- Minor dependency updates.
+
+### Fixed
+
+- Bluesky connection: fixed an issue where URL facets were not being correctly added to a post with a URL when a request to get embed metadata for the URL failed, even though the facet doesn't need said metadata.
+
 ## [0.10.0] - 2025-05-11
 
 aka the media update!
