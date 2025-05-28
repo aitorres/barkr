@@ -169,7 +169,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     assert bluesky.name == "BlueskyClass"
-    assert bluesky.min_id == "2000-10-31T01:30:00.000-05:00"
+    assert bluesky.min_id == datetime.fromisoformat("2000-10-31T01:30:00.000-05:00")
 
     monkeypatch.setattr(
         "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
@@ -369,11 +369,10 @@ def test_get_current_indexed_at() -> None:
     indexed_at = _get_current_indexed_at()
 
     # Ensure the returned value is a timestamp
-    parsed_time = datetime.fromisoformat(indexed_at)
-    assert parsed_time.tzinfo == timezone.utc
+    assert indexed_at.tzinfo == timezone.utc
 
     # Ensure the returned timestamp is close to the current time
-    delta = abs((parsed_time - current_time).total_seconds())
+    delta = abs((indexed_at - current_time).total_seconds())
     assert delta < 1
 
 

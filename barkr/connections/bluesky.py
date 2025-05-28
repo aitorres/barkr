@@ -88,8 +88,10 @@ class BlueskyConnection(Connection):
         user_feed = self.service.app.bsky.feed.get_author_feed({"actor": handle}).feed
         if user_feed:
             # Set the initial min_id to the most recent post's indexed_at,
-            # which is a UTC timestamp string
-            self.min_id: Optional[str] = user_feed[0].post.indexed_at
+            # which is a UTC timestamp string, casted to datetime
+            self.min_id: Optional[datetime] = datetime.fromisoformat(
+                user_feed[0].post.indexed_at
+            )
             logger.info("Bluesky (%s) initial min_id: %s", self.name, self.min_id)
         else:
             self.min_id = None
@@ -119,9 +121,10 @@ class BlueskyConnection(Connection):
                 if post.record.reply is not None:
                     continue
 
-                if self.min_id is None or datetime.fromisoformat(
-                    post.indexed_at
-                ) > datetime.fromisoformat(self.min_id):
+                if (
+                    self.min_id is None
+                    or datetime.fromisoformat(post.indexed_at) > self.min_id
+                ):
                     record = post.record
                     if (embed := record.embed) is not None:
                         text = self._process_text_with_embed(record.text, embed)
@@ -145,7 +148,7 @@ class BlueskyConnection(Connection):
                     )
 
         if messages:
-            self.min_id = messages[0].id
+            self.min_id = datetime.fromisoformat(messages[0].id)
             logger.info("Bluesky (%s) has %s new messages.", self.name, len(messages))
         else:
             logger.info("Bluesky (%s) has no new messages.", self.name)
@@ -226,7 +229,7 @@ class BlueskyConnection(Connection):
 
             try:
                 post_details = self.service.get_posts([created_uri]).posts[0]
-                indexed_at = post_details.indexed_at
+                indexed_at = datetime.fromisoformat(post_details.indexed_at)
             except IndexError:
                 indexed_at = _get_current_indexed_at()
                 logger.warning(
@@ -246,7 +249,7 @@ class BlueskyConnection(Connection):
             )
 
             self.min_id = indexed_at
-            posted_message_ids.append(indexed_at)
+            posted_message_ids.append(str(indexed_at))
 
         return posted_message_ids
 
@@ -524,13 +527,13 @@ def _get_meta_tag_from_html_metadata(
     return None
 
 
-def _get_current_indexed_at() -> str:
+def _get_current_indexed_at() -> datetime:
     """
-    Returns the current UTC timestamp in ISO format,
+    Returns the current UTC timestamp,
     to mock the Bluesky API's indexed_at field
     right after posting a message if the post details cannot be fetched.
 
     :return: The current indexed_at timestamp
     """
 
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(timezone.utc)
