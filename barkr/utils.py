@@ -14,6 +14,8 @@ REQUESTS_HEADERS: Final[dict[str, str]] = {
     )
 }
 
+URL_REGEX_PATTERN: Final[re.Pattern[str]] = re.compile(r"http[s]?://[^\s]+")
+
 
 def wrap_while_true(
     callback: Callable[[], Any], sleep_interval: int
@@ -47,4 +49,4 @@ def extract_urls_from_text(text: str) -> list[str]:
     :return: A list of extracted URLs
     """
 
-    return re.findall(r"http[s]?://[^\s]+", text)
+    return URL_REGEX_PATTERN.findall(text)
