@@ -4,6 +4,7 @@ supporting reading and writing statuses from the authenticated user
 via their handle and password.
 """
 
+import io
 import logging
 import time
 from datetime import datetime, timezone
@@ -26,6 +27,7 @@ from atproto_client.models.common import XrpcError  # type: ignore
 from atproto_client.models.string_formats import Did  # type: ignore
 from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace  # type: ignore
 from bs4 import BeautifulSoup, Tag
+from PIL import Image
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.models import Media, Message, MessageType
@@ -38,6 +40,7 @@ from barkr.utils import (
 logger = logging.getLogger()
 
 BLUESKY_MAX_MESSAGE_LENGTH: Final[int] = 300
+BLUESKY_MAX_IMAGE_SIZE_BYTES: Final[int] = 1000000
 
 
 class BlueskyConnection(Connection):
@@ -49,9 +52,17 @@ class BlueskyConnection(Connection):
     """
 
     supported_message_type: MessageType = MessageType.TEXT_MEDIA
+    service: Client
+    handle: str
+    compress_images: bool
 
-    def __init__(
-        self, name: str, modes: list[ConnectionMode], handle: str, password: str
+    def __init__(  # pylint: disable=too-many-arguments too-many-positional-arguments
+        self,
+        name: str,
+        modes: list[ConnectionMode],
+        handle: str,
+        password: str,
+        compress_images: bool = False,
     ) -> None:
         """
         Initializes the connection with a name and a list of modes
@@ -65,6 +76,7 @@ class BlueskyConnection(Connection):
         :param modes: A list of modes for the connection
         :param handle: The handle of the authenticated user
         :param password: The app password of the authenticated user
+        :param compress_images: Whether to compress images before posting
         """
 
         super().__init__(name, modes)
@@ -77,7 +89,8 @@ class BlueskyConnection(Connection):
 
         self.service = Client()
         self.service.login(handle, password)
-        self.handle: str = handle
+        self.handle = handle
+        self.compress_images = compress_images
 
         logger.info(
             "Bluesky (%s) connection initialized! (User handle: %s)",
@@ -478,7 +491,8 @@ class BlueskyConnection(Connection):
     def _upload_image_url_to_atproto_blob(self, image_url: str) -> Optional[BlobRef]:
         """
         Given a URL to an image, fetches the image and uploads it
-        to Bluesky as a blob.
+        to Bluesky as a blob. If the image is larger than the maximum
+        allowed size, it will be compressed.
 
         :param image_url: The URL of the image to upload
         :return: The BlobRef object referencing the uploaded image blob
@@ -494,10 +508,87 @@ class BlueskyConnection(Connection):
             logger.warning("Failed to fetch image from %s: %s", image_url, e)
             return None
 
+        # Check if image needs compression
+        if len(img_data) > BLUESKY_MAX_IMAGE_SIZE_BYTES:
+            logger.info(
+                "Image from %s is %d bytes, exceeds limit of %d bytes.",
+                image_url,
+                len(img_data),
+                BLUESKY_MAX_IMAGE_SIZE_BYTES,
+            )
+
+            if not self.compress_images:
+                logger.warning(
+                    "Image compression is disabled for Bluesky (%s), "
+                    "skipping upload for %s",
+                    self.name,
+                    image_url,
+                )
+                return None
+
+            img_data = self._compress_image(img_data)
+            if img_data is None:
+                logger.warning("Failed to compress image from %s", image_url)
+                return None
+
         try:
             return self.service.upload_blob(img_data).blob
         except (InvokeTimeoutError, BadRequestError) as e:
             logger.warning("Failed to upload image to Bluesky (%s): %s", self.name, e)
+            return None
+
+    def _compress_image(self, img_data: bytes) -> Optional[bytes]:
+        """
+        Compress an image to fit within the Bluesky image size limit.
+        This is attempted by scaling down the image.
+
+        This method uses the Pillow library to handle image processing.
+        If compression fails, or the target size cannot be achieved,
+        None is returned. This will signal that no image should be uploaded.
+
+        :param img_data: The original image data in bytes
+        :return: Compressed image data if successful, None otherwise
+        """
+        try:
+            # Open the image
+            img = Image.open(io.BytesIO(img_data))
+
+            # Resizing the image to fit within the size limit
+            original_width, original_height = img.size
+
+            for scale_factor in [0.8, 0.75]:
+                new_width = int(original_width * scale_factor)
+                new_height = int(original_height * scale_factor)
+
+                resized_img = img.resize(
+                    (new_width, new_height), Image.Resampling.LANCZOS
+                )
+
+                # Try different qualities with the resized image
+                for quality in [85, 70]:
+                    output = io.BytesIO()
+                    resized_img.save(
+                        output, format="JPEG", quality=quality, optimize=True
+                    )
+                    compressed_data = output.getvalue()
+
+                    if len(compressed_data) <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
+                        logger.info(
+                            "Compressed image to %d bytes using "
+                            "resize=%dx%d and quality=%d",
+                            len(compressed_data),
+                            new_width,
+                            new_height,
+                            quality,
+                        )
+                        return compressed_data
+
+            # If we still can't compress enough, give up
+            logger.warning("Could not compress image to fit within size limit")
+            return None
+
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning("Error compressing image: %s", e)
             return None
 
 
