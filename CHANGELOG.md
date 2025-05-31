@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.2] = 2025-05-31
+
+### Added
+
+- Bluesky connection: added a new, optional parameter (off by default) to allow Barkr to compress images that are being posted to Bluesky, if their size exceeds the maximum allowed by the platform.
+  - Initially this is only done on embed blobs (e.g. for URL previews), as Barkr doesn't yet support posting images as embeds.
+  - This is useful to prevent Bluesky from rejecting images that are too large, and to avoid having to manually resize images before posting them.
+  - The default behavior is to not compress images, to keep the current behavior. Images too large will still be rejected by Bluesky, resulting in posts without images.
+
+### Changed
+
+- Minor performance improvements to the Bluesky connection
+- Minor dependency updates
+
 ## [0.10.1] - 2025-05-21
 
 ### Changed
