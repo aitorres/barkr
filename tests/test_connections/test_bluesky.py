@@ -2,6 +2,7 @@
 Module to implement unit tests for the Bluesky connection class
 """
 
+import io
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
@@ -17,6 +18,7 @@ from atproto_client.models import (  # type: ignore
 )
 from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from bs4 import BeautifulSoup
+from PIL import Image
 from requests.exceptions import RequestException
 
 from barkr.connections import BlueskyConnection, ConnectionMode
@@ -809,6 +811,59 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
         )
     )
     assert blob_ref is None
+
+
+def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test the _compress_image method to ensure it correctly compresses images
+    to fit within the Bluesky size limit.
+    """
+
+    # Setup
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+    connection = BlueskyConnection(
+        "BlueskyClass",
+        [ConnectionMode.WRITE],
+        "test_handle",
+        "test_password",
+        compress_images=True,
+    )
+
+    # Helper function to create test image data
+    def create_test_image(width: int, height: int, img_format: str = "JPEG") -> bytes:
+        img = Image.new("RGB", (width, height), color="red")
+        output = io.BytesIO()
+        img.save(output, format=img_format, quality=95)
+        return output.getvalue()
+
+    # Test case: small-enough image, no compression needed
+    small_image_data = create_test_image(100, 100)
+    assert len(small_image_data) <= 1000000
+
+    result = connection._compress_image(  # pylint: disable=protected-access
+        small_image_data
+    )
+    assert result is not None
+    assert len(result) <= 1000000
+
+    # Test case: Invalid image data
+    invalid_image_data = b"not an image"
+    result = connection._compress_image(  # pylint: disable=protected-access
+        invalid_image_data
+    )
+    assert result is None
+
+    # Test case: Image.open raises an exception
+    def mock_image_open(*args, **kwargs):
+        raise ValueError("Invalid image")
+
+    monkeypatch.setattr("PIL.Image.open", mock_image_open)
+
+    valid_image_data = create_test_image(500, 500)
+    result = connection._compress_image(  # pylint: disable=protected-access
+        valid_image_data
+    )
+    assert result is None
 
 
 def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
