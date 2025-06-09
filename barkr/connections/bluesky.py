@@ -550,19 +550,19 @@ class BlueskyConnection(Connection):
         :return: Compressed image data if successful, None otherwise
         """
 
-        # If the image is already smaller than the limit,
-        # no need to compress it further
-        if len(img_data) <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
-            logger.info(
-                "Image is already within size limit (%d bytes), "
-                "no compression needed.",
-                len(img_data),
-            )
-            return img_data
-
         try:
-            # Open the image
+            # Open the image to ensure it's valid
             img = Image.open(io.BytesIO(img_data))
+
+            # If the image is already smaller than the limit,
+            # no need to compress it further
+            if len(img_data) <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
+                logger.info(
+                    "Image is already within size limit (%d bytes), "
+                    "no compression needed.",
+                    len(img_data),
+                )
+                return img_data
 
             # Resizing the image to fit within the size limit
             original_width, original_height = img.size
