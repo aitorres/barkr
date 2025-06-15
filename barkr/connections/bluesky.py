@@ -214,18 +214,8 @@ class BlueskyConnection(Connection):
                 error_response = e.response
                 content = error_response.content
 
-                if isinstance(content, XrpcError) and content.error == "BlobTooLarge":
-                    logger.warning(
-                        "Bluesky (%s) post failed due to embed size, "
-                        "reattempting post without embed.",
-                        self.name,
-                    )
-                    created_record = self.service.send_post(
-                        text=message.message,
-                        embed=None,
-                        facets=facets if facets else None,
-                        langs=language,
-                    )
+                if isinstance(content, XrpcError):
+                    self._retry_post_message(message, facets, language, e)
                 else:
                     logger.error(
                         "Bluesky (%s) post failed with unexpected error: %s",
@@ -265,6 +255,62 @@ class BlueskyConnection(Connection):
             posted_message_ids.append(str(indexed_at))
 
         return posted_message_ids
+
+    def _retry_post_message(
+        self,
+        message: Message,
+        facets: Optional[list[AppBskyRichtextFacet.Main]],
+        language: Optional[list[str]],
+        bad_request_error: BadRequestError,
+    ) -> None:
+        """
+        Given a Bluesky XRPC error, attempts to retry posting the message
+        if the error is recoverable. In most cases, this will be due to
+        an error with the embed (size, mime type...) so we retry
+        without it.
+
+        :param message: The message to retry posting
+        :param facets: The facets to attach to the post
+        :param language: The language of the post
+        :param xrcp_error: The XRPC error that occurred
+        """
+
+        xrcp_error = bad_request_error.response.content
+        if not isinstance(xrcp_error, XrpcError):
+            logger.error(
+                "Unexpected non-XRPC error when posting to Bluesky (%s): %s",
+                self.name,
+                bad_request_error.response.content,
+            )
+            raise bad_request_error
+
+        if xrcp_error.error == "BlobTooLarge":
+            logger.warning(
+                "Bluesky (%s) post failed due to embed size, "
+                "reattempting post without embed.",
+                self.name,
+            )
+        elif xrcp_error.error == "InvalidMimeType":
+            logger.warning(
+                "Bluesky (%s) post failed due to invalid MIME type (%s) "
+                "reattempting post without embed.",
+                self.name,
+                xrcp_error.message,
+            )
+        else:
+            logger.error(
+                "Bluesky (%s) post failed with unexpected error: %s",
+                self.name,
+                xrcp_error,
+            )
+            raise bad_request_error
+
+        self.service.send_post(
+            text=message.message,
+            embed=None,
+            facets=facets if facets else None,
+            langs=language,
+        )
 
     def _generate_post_embed_and_facets(
         self, text: str
