@@ -71,7 +71,12 @@ class Connection:
             if isinstance(e, NotImplementedError):
                 raise
 
-            logger.error("Error fetching messages from connection %s: %s", self.name, e)
+            logger.error(
+                "Error fetching messages from connection %s: %s (%s)",
+                self.name,
+                e,
+                type(e).__name__,
+            )
             return []
 
         new_messages: list[Message] = []
