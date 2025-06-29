@@ -64,3 +64,18 @@ def test_mastodon_activity_bot_init(monkeypatch: pytest.MonkeyPatch) -> None:
     assert posted_messages == ["Hello world!"]
     bot.write([Message("2", "Hello world 2!")])
     assert posted_messages == ["Hello world!", "Hello world 2!"]
+
+    # Handling errors
+    def mock_requests_post_failure(
+        _url: str,
+        data: dict[str, str],
+        *_args,
+        **_kwargs  # pylint: disable=unused-argument
+    ):
+        return type("Response", (), {"status_code": 503, "text": "Service Unavailable"})
+
+    monkeypatch.setattr("requests.post", mock_requests_post_failure)
+
+    bot.write([Message("3", "This will fail!")])
+    # No change in posted messages
+    assert posted_messages == ["Hello world!", "Hello world 2!"]
