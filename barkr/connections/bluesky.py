@@ -13,7 +13,11 @@ from urllib.parse import urlparse
 
 import requests
 from atproto import Client
-from atproto_client.exceptions import BadRequestError, InvokeTimeoutError  # type: ignore
+from atproto_client.exceptions import (  # type: ignore
+    BadRequestError,
+    InvokeTimeoutError,
+    RequestException,
+)
 from atproto_client.models import (  # type: ignore
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
@@ -460,7 +464,7 @@ class BlueskyConnection(Connection):
                 blob_bytes: bytes = ComAtprotoSyncNamespace(self.service).get_blob(
                     params={"cid": blob_cid, "did": did}
                 )
-            except (InvokeTimeoutError, BadRequestError) as e:
+            except (InvokeTimeoutError, BadRequestError, RequestException) as e:
                 logger.warning(
                     "Failed to fetch blob from Bluesky (%s) for CID %s: %s",
                     self.name,
@@ -579,7 +583,7 @@ class BlueskyConnection(Connection):
 
         try:
             return self.service.upload_blob(img_data).blob
-        except (InvokeTimeoutError, BadRequestError) as e:
+        except (InvokeTimeoutError, BadRequestError, RequestException) as e:
             logger.warning("Failed to upload image to Bluesky (%s): %s", self.name, e)
             return None
 
