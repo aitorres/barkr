@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.3] - 2025-06-29
+
+### Changed
+
+- Minor dependency updates
+- Minor test coverage updates
+- Improved error message on Bluesky errors
+- Early return when trying to compress an image that's already within the maximum size allowed by Bluesky, to avoid unnecessary processing.
+
+### Fixed
+
+- Handle invalid MIME types when posting images to Bluesky
+- Bluesky connection: handle Bluesky internal server errors gracefully when attempting to upload an embed image for a post.
+
 ## [0.10.2] = 2025-05-31
 
 ### Added
