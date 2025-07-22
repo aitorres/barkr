@@ -198,7 +198,7 @@ def _post_media_list_to_mastodon(
                 mime_type=media.mime_type,
                 description=media.alt_text,
             )
-        except requests.RequestException as e:
+        except MastodonNetworkError as e:
             logger.error("Failed to upload media: %s", e)
             continue
 
@@ -236,7 +236,7 @@ def _get_media_list_from_status(status: dict[str, Any]) -> list[Media]:
             response = requests.get(
                 url, timeout=REQUESTS_EMBED_GET_TIMEOUT, headers=REQUESTS_HEADERS
             )
-        except requests.RequestException as e:
+        except MastodonNetworkError as e:
             logger.error("Failed to download media from %s: %s", url, e)
             continue
 
