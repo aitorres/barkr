@@ -55,6 +55,7 @@ def test_rss_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             "https://example.com",
         )
 
+    monkeypatch.setattr("feedparser.parse", lambda _: MockFeedParserFeed(entries=[]))
     rss = RSSConnection(
         "RSSClass",
         [ConnectionMode.READ],
