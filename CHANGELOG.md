@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.4] - 2025-07-22
+
+### Changed
+
+- Minor dependency updates
+
+### Fixed
+
+- Catch the right exception on Mastodon connections when there's timeouts and network issues
+- Prevent the RSS tests from getting stuck
+
 ## [0.10.3] - 2025-06-29
 
 ### Changed
