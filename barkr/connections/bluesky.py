@@ -45,6 +45,8 @@ logger = logging.getLogger()
 
 BLUESKY_MAX_MESSAGE_LENGTH: Final[int] = 300
 BLUESKY_MAX_IMAGE_SIZE_BYTES: Final[int] = 1000000
+BLUESKY_EXPONENTIAL_BACKOFF_RETRIES: Final[int] = 3
+BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY: Final[float] = 0.1  # 100ms
 
 
 class BlueskyConnection(Connection):
@@ -230,22 +232,11 @@ class BlueskyConnection(Connection):
 
             created_uri = created_record.uri
 
-            # NOTE: introducing an artificial delay to ensure the post is indexed
-            # before fetching the post details
-            time.sleep(2)
-
-            try:
-                post_details = self.service.get_posts([created_uri]).posts[0]
-                indexed_at = datetime.fromisoformat(post_details.indexed_at)
-            except IndexError:
-                indexed_at = _get_current_indexed_at()
-                logger.warning(
-                    "Failed to fetch post details for Bluesky (%s) post: %s, "
-                    "manually setting indexed_at to %s",
-                    self.name,
-                    created_uri,
-                    indexed_at,
-                )
+            # NOTE: we want to retrieve the post's indexed_at timestamp
+            # so we can use it as the new `min_id`, we do this with a
+            # backoff retry mechanism since it might not be immediately
+            # indexed on the first try.
+            indexed_at = self._get_post_indexed_at_with_retry(created_uri)
 
             logger.info(
                 "Posted message %s to Bluesky (%s) connection (URI: %s, Indexed At: %s)",
@@ -651,6 +642,50 @@ class BlueskyConnection(Connection):
         except Exception as e:  # pylint: disable=broad-except
             logger.warning("Error compressing image: %s", e)
             return None
+
+    def _get_post_indexed_at_with_retry(self, created_uri: str) -> datetime:
+        """
+        Attempts to fetch the indexed_at timestamp for a newly created post
+        with exponential backoff retry. Since a fresh post might not be immediately
+        indexed, we use a backoff retry mechanism, and return the current time
+        as a default if the post details cannot be fetched.
+
+        :param created_uri: The URI of the created post
+        :return: The indexed_at timestamp of the post
+        """
+
+        for attempt in range(BLUESKY_EXPONENTIAL_BACKOFF_RETRIES):
+            try:
+                post_details = self.service.get_posts([created_uri]).posts[0]
+            except (IndexError, InvokeTimeoutError):
+                if attempt >= BLUESKY_EXPONENTIAL_BACKOFF_RETRIES - 1:
+                    break
+
+                delay = BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY * (2**attempt)
+                time.sleep(delay)
+                continue
+            else:
+                indexed_at = datetime.fromisoformat(post_details.indexed_at)
+
+                logger.info(
+                    "Successfully fetched post details for Bluesky (%s) "
+                    "after %d attempts",
+                    self.name,
+                    attempt + 1,
+                )
+
+                return indexed_at
+
+        indexed_at = _get_current_indexed_at()
+        logger.warning(
+            "Failed to fetch post details for Bluesky (%s) post: %s "
+            "after %d attempts, manually setting indexed_at to %s",
+            self.name,
+            created_uri,
+            BLUESKY_EXPONENTIAL_BACKOFF_RETRIES,
+            indexed_at,
+        )
+        return indexed_at
 
 
 def _get_meta_tag_from_html_metadata(

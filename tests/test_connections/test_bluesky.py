@@ -23,6 +23,8 @@ from requests.exceptions import RequestException
 
 from barkr.connections import BlueskyConnection, ConnectionMode
 from barkr.connections.bluesky import (
+    BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY,
+    BLUESKY_EXPONENTIAL_BACKOFF_RETRIES,
     _get_current_indexed_at,
     _get_meta_tag_from_html_metadata,
 )
@@ -127,6 +129,24 @@ class MockFeed:
     """
 
     feed: list[MockPost]
+
+
+@dataclass(frozen=True)
+class MockPostDetails:
+    """
+    Mock class to simulate a Bluesky post details response from get_posts
+    """
+
+    indexed_at: str
+
+
+@dataclass(frozen=True)
+class MockGetPostsResponse:
+    """
+    Mock class to simulate the response of Client.get_posts
+    """
+
+    posts: list[MockPostDetails]
 
 
 def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -864,6 +884,103 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
         valid_image_data
     )
     assert result is None
+
+
+def test_get_post_indexed_at_with_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Tests for the _get_post_indexed_at_with_retry method that retrieves
+    a recently-created bluesky post's indexed_at timestamp with
+    exponential backoff retries.
+    """
+
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+
+    connection = BlueskyConnection(
+        "TestBluesky",
+        [ConnectionMode.WRITE],
+        "test_handle",
+        "test_password",
+    )
+
+    # Test case: Success on first attempt
+    expected_indexed_at = "2025-07-26T12:00:00.000Z"
+    mock_get_posts_response = MockGetPostsResponse(
+        posts=[MockPostDetails(indexed_at=expected_indexed_at)]
+    )
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.get_posts",
+        lambda *_: mock_get_posts_response,
+    )
+
+    test_uri = "at://did:plc:test/app.bsky.feed.post/test123"
+    result = (
+        connection._get_post_indexed_at_with_retry(  # pylint: disable=protected-access
+            test_uri
+        )
+    )
+
+    assert result == datetime.fromisoformat(expected_indexed_at)
+
+    # Test case: Success after retries (IndexError on first attempts)
+    call_count = 0
+
+    def mock_get_posts_with_retries(*_):
+        nonlocal call_count
+        call_count += 1
+
+        # Fail on first attempt, succeed on second
+        if call_count < 2:
+            # This will trigger an IndexError
+            return MockGetPostsResponse(posts=[])
+
+        return mock_get_posts_response
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.get_posts",
+        mock_get_posts_with_retries,
+    )
+
+    # Mock time.sleep to avoid actual delays in tests
+    sleep_calls: list[int] = []
+    monkeypatch.setattr("time.sleep", sleep_calls.append)
+
+    result = (
+        connection._get_post_indexed_at_with_retry(  # pylint: disable=protected-access
+            test_uri
+        )
+    )
+
+    assert result == datetime.fromisoformat(expected_indexed_at)
+    assert len(sleep_calls) == 1  # Should have slept once before retry
+    expected_delay = BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY * (2**0)
+    assert sleep_calls[0] == expected_delay
+
+    # Test case: Failure after all retries (IndexError every time)
+    def mock_get_posts_always_fail(*_):
+        return MockGetPostsResponse(posts=[])
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.get_posts",
+        mock_get_posts_always_fail,
+    )
+
+    mock_current_time = datetime.now(timezone.utc)
+    monkeypatch.setattr(
+        "barkr.connections.bluesky._get_current_indexed_at",
+        lambda: mock_current_time,
+    )
+
+    sleep_calls.clear()
+    result = (
+        connection._get_post_indexed_at_with_retry(  # pylint: disable=protected-access
+            test_uri
+        )
+    )
+
+    assert result == mock_current_time
+    expected_sleep_count = BLUESKY_EXPONENTIAL_BACKOFF_RETRIES - 1
+    assert len(sleep_calls) == expected_sleep_count
 
 
 def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
