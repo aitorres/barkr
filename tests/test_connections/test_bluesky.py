@@ -903,7 +903,7 @@ def test_get_post_indexed_at_with_retry(monkeypatch: pytest.MonkeyPatch) -> None
     )
 
     # Test case: Success on first attempt
-    expected_indexed_at = "2025-07-26T12:00:00.000Z"
+    expected_indexed_at = "2025-07-26T12:00:00.000+00:00"
     mock_get_posts_response = MockGetPostsResponse(
         posts=[MockPostDetails(indexed_at=expected_indexed_at)]
     )
