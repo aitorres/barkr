@@ -207,7 +207,7 @@ class BlueskyConnection(Connection):
             except InvokeTimeoutError as e:
                 # Something happened with the Bluesky API, let's recover
                 logger.error(
-                    "Bluesky (%s) post failed with timeout error: %s", self.name, e
+                    "Bluesky (%s) post failed with timeout error: %s", self.name, str(e)
                 )
 
                 # In case we _did_ post the message, we don't want to
