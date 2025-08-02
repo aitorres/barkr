@@ -74,7 +74,7 @@ class Connection:
             logger.error(
                 "Error fetching messages from connection %s: %s (%s)",
                 self.name,
-                e,
+                str(e) or "(no error message)",
                 type(e).__name__,
             )
             return []
