@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from barkr.models.media import Media
+from barkr.models.message_allowed_replies import MessageAllowedReplies
 from barkr.models.message_type import MessageType
 from barkr.models.message_visibility import MessageVisibility
 
@@ -35,6 +36,7 @@ class Message:
     language: Optional[str] = None
     label: Optional[str] = None
     visibility: MessageVisibility = MessageVisibility.PUBLIC
+    allowed_replies: Optional[list[MessageAllowedReplies]] = None
 
     def has_content(self, supported_message_type: MessageType) -> bool:
         """

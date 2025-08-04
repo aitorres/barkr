@@ -12,7 +12,7 @@ from typing import Final, Optional, Union
 from urllib.parse import urlparse
 
 import requests
-from atproto import Client
+from atproto import AtUri, Client
 from atproto_client.exceptions import (  # type: ignore
     BadRequestError,
     InvokeTimeoutError,
@@ -34,7 +34,7 @@ from bs4 import BeautifulSoup, Tag
 from PIL import Image
 
 from barkr.connections.base import Connection, ConnectionMode
-from barkr.models import Media, Message, MessageType
+from barkr.models import Media, Message, MessageAllowedReplies, MessageType
 from barkr.utils import (
     REQUESTS_EMBED_GET_TIMEOUT,
     REQUESTS_HEADERS,
@@ -237,6 +237,22 @@ class BlueskyConnection(Connection):
             # backoff retry mechanism since it might not be immediately
             # indexed on the first try.
             indexed_at = self._get_post_indexed_at_with_retry(created_uri)
+
+            # If the message has reply restrictions, we create a thread gate record
+            # for them
+            if message.allowed_replies:
+                thread_gate_record = MessageAllowedReplies.to_bluesky_threadgate(
+                    created_uri,
+                    message.allowed_replies,
+                    self.service.get_current_time_iso(),
+                )
+
+                if thread_gate_record:
+                    self.service.app.bsky.feed.threadgate.create(
+                        self.service.me.did,
+                        thread_gate_record,
+                        AtUri.from_str(created_uri).rkey,
+                    )
 
             logger.info(
                 "Posted message %s to Bluesky (%s) connection (URI: %s, Indexed At: %s)",

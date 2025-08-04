@@ -3,8 +3,10 @@ Module to implement unit tests for the Message class.
 """
 
 from barkr.models.media import Media
-from barkr.models.message import Message, MessageVisibility
+from barkr.models.message import Message
+from barkr.models.message_allowed_replies import MessageAllowedReplies
 from barkr.models.message_type import MessageType
+from barkr.models.message_visibility import MessageVisibility
 
 
 def test_message() -> None:
@@ -21,6 +23,7 @@ def test_message() -> None:
     assert message_1.language == "en"
     assert message_1.label == "greeting"
     assert message_1.visibility == MessageVisibility.PUBLIC
+    assert message_1.allowed_replies is None
 
     message_2 = Message(
         id="67890",
@@ -31,17 +34,20 @@ def test_message() -> None:
     assert message_2.language is None
     assert message_2.label is None
     assert message_2.visibility == MessageVisibility.PUBLIC
+    assert message_2.allowed_replies is None
 
     message_3 = Message(
         id="abcde",
         message="Hola, mundo!",
         visibility=MessageVisibility.PRIVATE,
+        allowed_replies=[MessageAllowedReplies.FOLLOWERS],
     )
     assert message_3.id == "abcde"
     assert message_3.message == "Hola, mundo!"
     assert message_3.language is None
     assert message_3.label is None
     assert message_3.visibility == MessageVisibility.PRIVATE
+    assert message_3.allowed_replies == [MessageAllowedReplies.FOLLOWERS]
 
 
 def test_message_has_content() -> None:
