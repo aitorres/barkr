@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.5] - 2025-08-04
+
+### Added
+
+- Bluesky connection: added support to set who can reply to a post (through thread gates) when posting a message, with the `allowed_replies` parameter.
+  - This is an optional parameter, and defaults to `None`, which means that anyone can reply to the post (default behavior before this update).
+  - If set, it will be used to set the thread gate for the post, allowing only users who meet the criteria to reply.
+
+### Changed
+
+- Implemented exponential back-off retry logic when retrieving a recently posted message's details on Bluesky.
+- Minor dependency updates
+- Minor tweaks to error messages and logging statements to support debugging flows.
+
 ## [0.10.4] - 2025-07-22
 
 ### Changed
