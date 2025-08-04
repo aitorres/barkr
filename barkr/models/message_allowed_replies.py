@@ -4,7 +4,7 @@ who can reply to a message.
 """
 
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 from atproto_client.models import AppBskyFeedThreadgate  # type: ignore
 from atproto_client.models.app.bsky.feed.threadgate import (  # type: ignore
@@ -64,7 +64,7 @@ class MessageAllowedReplies(Enum):
             )
 
         # Otherwise, we build the thread gate record with the allowed replies
-        allow: list[MentionRule | FollowerRule | FollowingRule | ListRule] = []
+        allow: list[Union[MentionRule, FollowerRule, FollowingRule, ListRule]] = []
 
         if MessageAllowedReplies.FOLLOWERS in allowed_replies:
             allow.append(AppBskyFeedThreadgate.FollowerRule())
