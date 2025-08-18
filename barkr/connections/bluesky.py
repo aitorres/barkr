@@ -26,6 +26,7 @@ from atproto_client.models import (  # type: ignore
     AppBskyEmbedVideo,
     AppBskyRichtextFacet,
 )
+from atproto_client.models.app.bsky.feed.post import CreateRecordResponse  # type: ignore
 from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from atproto_client.models.common import XrpcError  # type: ignore
 from atproto_client.models.string_formats import Did  # type: ignore
@@ -198,7 +199,7 @@ class BlueskyConnection(Connection):
             embed, facets = self._generate_post_embed_and_facets(message.message)
             language = [message.language] if message.language else None
             try:
-                created_record = self.service.send_post(
+                created_record: CreateRecordResponse = self.service.send_post(
                     text=message.message,
                     embed=embed,
                     facets=facets if facets else None,
@@ -221,7 +222,9 @@ class BlueskyConnection(Connection):
                 content = error_response.content
 
                 if isinstance(content, XrpcError):
-                    self._retry_post_message(message, facets, language, e)
+                    created_record = self._retry_post_message(
+                        message, facets, language, e
+                    )
                 else:
                     logger.error(
                         "Bluesky (%s) post failed with unexpected error: %s",
@@ -273,7 +276,7 @@ class BlueskyConnection(Connection):
         facets: Optional[list[AppBskyRichtextFacet.Main]],
         language: Optional[list[str]],
         bad_request_error: BadRequestError,
-    ) -> None:
+    ) -> CreateRecordResponse:
         """
         Given a Bluesky XRPC error, attempts to retry posting the message
         if the error is recoverable. In most cases, this will be due to
@@ -284,6 +287,7 @@ class BlueskyConnection(Connection):
         :param facets: The facets to attach to the post
         :param language: The language of the post
         :param xrcp_error: The XRPC error that occurred
+        :return: The response from the Bluesky API after retrying the post
         """
 
         xrcp_error = bad_request_error.response.content
@@ -316,7 +320,7 @@ class BlueskyConnection(Connection):
             )
             raise bad_request_error
 
-        self.service.send_post(
+        return self.service.send_post(
             text=message.message,
             embed=None,
             facets=facets if facets else None,
