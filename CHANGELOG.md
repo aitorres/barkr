@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.6] - 2025-08-05
+
+### Fixed
+
+- Addressed a bug on the Bluesky connection where retrying to post a message after certain kinds of failures would post correctly, but break the rest of the writing thread, preventing further messages from being posted. The root cause is an unbound local variable in the retry logic that was not being assigned correctly.
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.10.5] - 2025-08-04
 
 ### Added
