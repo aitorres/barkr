@@ -12,7 +12,7 @@ from typing import Final, Optional, Union
 from urllib.parse import urlparse
 
 import requests
-from atproto import AtUri, Client
+from atproto import AtUri, Client, Request
 from atproto_client.exceptions import (  # type: ignore
     BadRequestError,
     InvokeTimeoutError,
@@ -32,6 +32,7 @@ from atproto_client.models.common import XrpcError  # type: ignore
 from atproto_client.models.string_formats import Did  # type: ignore
 from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace  # type: ignore
 from bs4 import BeautifulSoup, Tag
+from httpx import Timeout
 from PIL import Image
 
 from barkr.connections.base import Connection, ConnectionMode
@@ -48,6 +49,7 @@ BLUESKY_MAX_MESSAGE_LENGTH: Final[int] = 300
 BLUESKY_MAX_IMAGE_SIZE_BYTES: Final[int] = 1000000
 BLUESKY_EXPONENTIAL_BACKOFF_RETRIES: Final[int] = 3
 BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY: Final[float] = 0.1  # 100ms
+BLUESKY_REQUEST_TIMEOUT: Final[int] = 15  # seconds
 
 
 class BlueskyConnection(Connection):
@@ -94,7 +96,9 @@ class BlueskyConnection(Connection):
             handle,
         )
 
-        self.service = Client()
+        self.service = Client(
+            request=Request(timeout=Timeout(timeout=BLUESKY_REQUEST_TIMEOUT))
+        )
         self.service.login(handle, password)
         self.handle = handle
         self.compress_images = compress_images
