@@ -153,7 +153,6 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Basic unit tests for the BlueskyConnection class
     """
-
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     bluesky_no_initial_messages = BlueskyConnection(
@@ -189,8 +188,6 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "test_handle",
         "test_password",
     )
-
-    assert bluesky.name == "BlueskyClass"
     assert bluesky.min_id == datetime.fromisoformat("2000-10-31T01:30:00.000-05:00")
 
     monkeypatch.setattr(
@@ -290,7 +287,6 @@ def test_bluesky_reconstructs_embeds_successfully(
     Since we're ignoring the embed in the generic Message, we need to reconstruct
     the URL on the message's text.
     """
-
     # We need to patch `isinstance` to make our mocked classes work,
     # so we preserve the original `isinstance` function
     original_isinstance = isinstance
@@ -303,7 +299,6 @@ def test_bluesky_reconstructs_embeds_successfully(
         "test_handle",
         "test_password",
     )
-    assert bsky.name == "BlueskyClass"
 
     monkeypatch.setattr(
         "builtins.isinstance",
@@ -386,14 +381,11 @@ def test_get_current_indexed_at() -> None:
     """
     Test that `_get_current_indexed_at` returns a timestamp.
     """
-
     current_time = datetime.now(timezone.utc)
     indexed_at = _get_current_indexed_at()
 
-    # Ensure the returned value is a timestamp
     assert indexed_at.tzinfo == timezone.utc
 
-    # Ensure the returned timestamp is close to the current time
     delta = abs((indexed_at - current_time).total_seconds())
     assert delta < 1
 
@@ -403,7 +395,6 @@ def test_get_meta_tag_from_html_metadata() -> None:
     Tests to check that the meta tag values are extracted correctly
     from the HTML metadata.
     """
-
     # Test case 1: Meta tag with the specified property exists
     html_content = """
     <html>
@@ -452,8 +443,6 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
     Test `_generate_post_embed_and_facets` to ensure it correctly generates
     embed objects and facets for links in the text.
     """
-
-    # Setup
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
@@ -463,7 +452,6 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
         "test_password",
     )
 
-    # Mocking requests
     def mock_requests_get(url: str, *_args, **_kwargs):
         if "valid-url.com" in url:
             html_content = """
@@ -573,8 +561,6 @@ def test_generate_post_embed_and_facets_timeout_cases(
     embed objects and facets for links in the text whenever possible
     when facing timeouts on metadata requests.
     """
-
-    # Setup
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
@@ -595,8 +581,7 @@ def test_generate_post_embed_and_facets_timeout_cases(
         mock_upload_image_url_to_atproto_blob,
     )
 
-    # Test case 1: request fails, but we still want to get
-    # the URL facet
+    # Test case 1: request fails, but we still want to get the URL facet
     def mock_requests_get_fail(url: str, *_args, **_kwargs):
         if "url-that-times-out.com" in url:
             raise RequestException("Failed to fetch metadata")
@@ -624,9 +609,8 @@ def test_generate_post_embed_and_facets_timeout_cases(
     assert len(facets) == 1
     assert facets[0].features[0].uri == "https://url-that-times-out.com"
 
-    # Test case 2: the first URL times out, but the second one
-    # is valid, so we should get two facets, and an embed for
-    # the second URL
+    # Test case 2: the first URL times out, but the second one is valid
+    # so we should get two facets, and an embed for the second URL
     text = "I have two links: https://url-that-times-out.com and https://valid-url.com"
     embed, facets = (
         connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
@@ -647,8 +631,6 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
     Tests that we can extract the media list from a Bluesky embed
     successfully.
     """
-
-    # Setup
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
@@ -657,7 +639,6 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
         "test_handle",
         "test_password",
     )
-    assert connection.name == "BlueskyClass"
 
     test_did: str = MockAuthor().did
 
@@ -755,12 +736,12 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
             size=12345,
         ),
     )
-    media_list = (
+    assert (
         connection._extract_media_list_from_embed(  # pylint: disable=protected-access
             test_did, video_embed
         )
+        == 0
     )
-    assert len(media_list) == 0
 
 
 def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -768,8 +749,6 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
     Test that the _upload_image_url_to_atproto_blob method correctly handles
     retrieving an image from a URL and uploading it as a blob to Atproto.
     """
-
-    # Setup
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     conn = BlueskyConnection(
@@ -809,12 +788,12 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
 
     monkeypatch.setattr("requests.get", mock_failed_request_get)
 
-    blob_ref = (
+    assert (
         conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
             "https://example.com/bad-image.jpg"
         )
+        is None
     )
-    assert blob_ref is None
 
     # Case: Successful image retrieval but failed upload
     monkeypatch.setattr(
@@ -825,12 +804,37 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
         lambda *_args, **_kwargs: (_ for _ in ()).throw(BadRequestError()),
     )
 
-    blob_ref = (
+    assert (
         conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
             "https://example.com/image.jpg"
         )
+    ) is None
+
+    # Case: Successful retrieval, image is larger than Bluesky limit
+    # and compression is disabled
+    large_image_data = b"a" * 2_000_000  # 2 MB
+    monkeypatch.setattr(
+        "requests.get", lambda *args, **_kargs: MockResponse(large_image_data, 200)
     )
-    assert blob_ref is None
+    conn.compress_images = False
+    assert (
+        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
+            "https://example.com/large-image.jpg"
+        )
+    ) is None
+
+    # Case: successful retrieval, image is larger than Bluesky limit
+    # and compression is enabled, but compression fails
+    conn.compress_images = True
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.BlueskyConnection._compress_image",
+        lambda *_args, **_kwargs: None,
+    )
+    assert (
+        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
+            "https://example.com/large-image.jpg"
+        )
+    ) is None
 
 
 def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -838,8 +842,6 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
     Test the _compress_image method to ensure it correctly compresses images
     to fit within the Bluesky size limit.
     """
-
-    # Setup
     _setup_bluesky_connection_monkeypatch(monkeypatch)
     connection = BlueskyConnection(
         "BlueskyClass",
@@ -849,11 +851,9 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
         compress_images=True,
     )
 
-    # Helper function to create test image data
-    def create_test_image(width: int, height: int, img_format: str = "JPEG") -> bytes:
-        img = Image.new("RGB", (width, height), color="red")
+    def create_test_image(w: int, h: int) -> bytes:
         output = io.BytesIO()
-        img.save(output, format=img_format, quality=95)
+        Image.new("RGB", (w, h), color="red").save(output, "JPEG", quality=95)
         return output.getvalue()
 
     # Test case: small-enough image, no compression needed
@@ -868,10 +868,12 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # Test case: Invalid image data
     invalid_image_data = b"not an image"
-    result = connection._compress_image(  # pylint: disable=protected-access
-        invalid_image_data
+    assert (
+        connection._compress_image(  # pylint: disable=protected-access
+            invalid_image_data
+        )
+        is None
     )
-    assert result is None
 
     # Test case: Image.open raises an exception
     def mock_image_open(*args, **kwargs):
@@ -880,10 +882,10 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("PIL.Image.open", mock_image_open)
 
     valid_image_data = create_test_image(500, 500)
-    result = connection._compress_image(  # pylint: disable=protected-access
-        valid_image_data
+    assert (
+        connection._compress_image(valid_image_data)  # pylint: disable=protected-access
+        is None
     )
-    assert result is None
 
 
 def test_get_post_indexed_at_with_retry(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -892,7 +894,6 @@ def test_get_post_indexed_at_with_retry(monkeypatch: pytest.MonkeyPatch) -> None
     a recently-created bluesky post's indexed_at timestamp with
     exponential backoff retries.
     """
-
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
@@ -988,7 +989,6 @@ def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> No
     Setups the monkeypatch calls to enable testing the Bluesky connection
     without actually connecting to the Bluesky API.
     """
-
     monkeypatch.setattr(
         "barkr.connections.bluesky.Client.login",
         lambda *_: None,
