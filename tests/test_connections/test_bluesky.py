@@ -736,11 +736,8 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
             size=12345,
         ),
     )
-    assert (
-        connection._extract_media_list_from_embed(  # pylint: disable=protected-access
-            test_did, video_embed
-        )
-        == 0
+    assert not connection._extract_media_list_from_embed(  # pylint: disable=protected-access # noqa: E501
+        test_did, video_embed
     )
 
 
