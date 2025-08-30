@@ -460,13 +460,7 @@ class BlueskyConnection(Connection):
         # respective MIME types; note that if the embed was of a different
         # type, this iteration should be skipped
         for blob_ref, alt_text in blob_refs_with_alt_text:
-            if blob_ref is None:
-                continue
-
             mime_type = blob_ref.mime_type
-            if mime_type is None:
-                continue
-
             blob_cid = blob_ref.cid.encode()
             logger.info(
                 "Fetching blob from Bluesky (%s) for CID %s",
