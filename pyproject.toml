@@ -65,7 +65,7 @@ warn_return_any = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["tweepy.*", "atproto.*", "feedparser.*"]
+module = ["tweepy.*", "atproto.*", "atproto_client.exceptions.*", "feedparser.*"]
 follow_untyped_imports = true
 
 [tool.pylint.FORMAT]

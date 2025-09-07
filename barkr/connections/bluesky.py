@@ -13,9 +13,10 @@ from urllib.parse import urlparse
 
 import requests
 from atproto import AtUri, Client, Request
-from atproto_client.exceptions import (  # type: ignore
+from atproto_client.exceptions import (
     BadRequestError,
     InvokeTimeoutError,
+    RequestErrorBase,
     RequestException,
 )
 from atproto_client.models import (  # type: ignore
@@ -26,6 +27,7 @@ from atproto_client.models import (  # type: ignore
     AppBskyEmbedVideo,
     AppBskyRichtextFacet,
 )
+from atproto_client.models.app.bsky.feed.defs import FeedViewPost  # type: ignore
 from atproto_client.models.app.bsky.feed.post import CreateRecordResponse  # type: ignore
 from atproto_client.models.blob_ref import BlobRef  # type: ignore
 from atproto_client.models.common import XrpcError  # type: ignore
@@ -50,6 +52,11 @@ BLUESKY_MAX_IMAGE_SIZE_BYTES: Final[int] = 1000000
 BLUESKY_EXPONENTIAL_BACKOFF_RETRIES: Final[int] = 3
 BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY: Final[float] = 0.1  # 100ms
 BLUESKY_REQUEST_TIMEOUT: Final[int] = 15  # seconds
+BLUESKY_HANDLED_EXCEPTIONS: Final[tuple[type[RequestErrorBase], ...]] = (
+    InvokeTimeoutError,
+    BadRequestError,
+    RequestException,
+)
 
 
 class BlueskyConnection(Connection):
@@ -109,7 +116,7 @@ class BlueskyConnection(Connection):
             self.handle,
         )
 
-        user_feed = self.service.app.bsky.feed.get_author_feed({"actor": handle}).feed
+        user_feed = self._get_user_feed_with_retry()
         if user_feed:
             # Set the initial min_id to the most recent post's indexed_at,
             # which is a UTC timestamp string, casted to datetime
@@ -130,9 +137,7 @@ class BlueskyConnection(Connection):
 
         messages: list[Message] = []
 
-        user_feed = self.service.app.bsky.feed.get_author_feed(
-            {"actor": self.handle}
-        ).feed
+        user_feed = self._get_user_feed_with_retry()
         if user_feed:
             for feed_view in user_feed:
                 post = feed_view.post
@@ -223,6 +228,14 @@ class BlueskyConnection(Connection):
                 # We could be trying to create an embed that is too large,
                 # let's recover
                 error_response = e.response
+                if error_response is None:
+                    logger.error(
+                        "BadRequestError from Bluesky (%s) has no response,"
+                        " cannot retry.",
+                        self.name,
+                    )
+                    raise e
+
                 content = error_response.content
 
                 if isinstance(content, XrpcError):
@@ -290,16 +303,24 @@ class BlueskyConnection(Connection):
         :param message: The message to retry posting
         :param facets: The facets to attach to the post
         :param language: The language of the post
-        :param xrcp_error: The XRPC error that occurred
+        :param bad_request_error: The XRPC error that occurred
         :return: The response from the Bluesky API after retrying the post
         """
 
-        xrcp_error = bad_request_error.response.content
+        bad_request_error_response = bad_request_error.response
+        if bad_request_error_response is None:
+            logger.error(
+                "BadRequestError from Bluesky (%s) has no response, cannot retry.",
+                self.name,
+            )
+            raise bad_request_error
+
+        xrcp_error = bad_request_error_response.content
         if not isinstance(xrcp_error, XrpcError):
             logger.error(
                 "Unexpected non-XRPC error when posting to Bluesky (%s): %s",
                 self.name,
-                bad_request_error.response.content,
+                bad_request_error_response.content,
             )
             raise bad_request_error
 
@@ -473,7 +494,7 @@ class BlueskyConnection(Connection):
                 blob_bytes: bytes = ComAtprotoSyncNamespace(self.service).get_blob(
                     params={"cid": blob_cid, "did": did}
                 )
-            except (InvokeTimeoutError, BadRequestError, RequestException) as e:
+            except BLUESKY_HANDLED_EXCEPTIONS as e:
                 logger.warning(
                     "Failed to fetch blob from Bluesky (%s) for CID %s: %s",
                     self.name,
@@ -592,7 +613,7 @@ class BlueskyConnection(Connection):
 
         try:
             return self.service.upload_blob(img_data).blob
-        except (InvokeTimeoutError, BadRequestError, RequestException) as e:
+        except BLUESKY_HANDLED_EXCEPTIONS as e:
             logger.warning("Failed to upload image to Bluesky (%s): %s", self.name, e)
             return None
 
@@ -704,6 +725,55 @@ class BlueskyConnection(Connection):
             indexed_at,
         )
         return indexed_at
+
+    def _get_user_feed_with_retry(self) -> Optional[FeedViewPost]:
+        """
+        Fetches the Bluesky user feed to retrieve latest posts from the
+        authenticated user. Uses an exponential backoff retry mechanism
+        to handle potential transient errors.
+
+        :return: The author feed if successful, None if all retries fail
+        """
+
+        for attempt in range(BLUESKY_EXPONENTIAL_BACKOFF_RETRIES):
+            try:
+                user_feed: FeedViewPost = self.service.app.bsky.feed.get_author_feed(
+                    {"actor": self.handle}
+                ).feed
+
+                if attempt > 0:
+                    logger.info(
+                        "Successfully fetched author feed for Bluesky (%s) "
+                        "after %d attempts",
+                        self.name,
+                        attempt + 1,
+                    )
+
+                return user_feed
+            except BLUESKY_HANDLED_EXCEPTIONS as e:
+                if attempt >= BLUESKY_EXPONENTIAL_BACKOFF_RETRIES - 1:
+                    logger.error(
+                        "Failed to fetch author feed for Bluesky (%s) "
+                        "after %d attempts: %s",
+                        self.name,
+                        BLUESKY_EXPONENTIAL_BACKOFF_RETRIES,
+                        str(e),
+                    )
+                    break
+
+                delay = BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY * (2**attempt)
+                logger.warning(
+                    "Attempt %d to fetch author feed for Bluesky (%s) failed: %s. "
+                    "Retrying in %.2f seconds...",
+                    attempt + 1,
+                    self.name,
+                    str(e),
+                    delay,
+                )
+                time.sleep(delay)
+                continue
+
+        return None
 
 
 def _get_meta_tag_from_html_metadata(
