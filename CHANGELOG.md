@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.8] - 2025-09-07
+
+### Changed
+
+- Bluesky connection: added exponential back-off logic when fetching new posts, to account for transient network issues.
+- Increased unit test coverage
+- Minor dependency updates and other refactors
+
 ## [0.10.7] - 2025-08-27
 
 ### Changed
