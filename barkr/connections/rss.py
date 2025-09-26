@@ -103,7 +103,7 @@ class RSSConnection(Connection):
         try:
             feed = feedparser.parse(self.feed_url)
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Error fetching RSS feed: %s", e)
+            logger.error("Error fetching RSS feed (%s): %s", self.name, e)
             return []
 
         logger.info("Fetched RSS feed successfully!")
