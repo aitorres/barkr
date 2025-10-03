@@ -56,7 +56,7 @@ def test_mastodon_activity_bot_init(monkeypatch: pytest.MonkeyPatch) -> None:
         nonlocal posted_messages  # noqa: F824
 
         posted_messages.append(data["content"])
-        return type("Response", (), {"status_code": 200})
+        return type("Response", (), {"status_code": 200, "text": "OK"})
 
     monkeypatch.setattr("requests.post", mock_requests_post)
 
