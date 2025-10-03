@@ -84,5 +84,11 @@ class MastodonActivityBotConnection(Connection):
                     self.name,
                     response.text,
                 )
+            else:
+                logger.info(
+                    "Successfully posted message to ActivityBot (%s) with response: %s",
+                    self.name,
+                    response.text,
+                )
 
         return []
