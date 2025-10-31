@@ -31,12 +31,12 @@ classifiers = [
 
 
 [tool.poetry.dependencies]
-python = "^3.9.2, <3.14"
+python = "^3.10.0, <3.15"
 beautifulsoup4 = "^4.14.2"
 lxml = "^6.0.2"
 mastodon-py = "^2.1.4"
 tweepy = "^4.16.0"
-atproto = "^0.0.62"
+atproto = "^0.0.63"
 python-telegram-bot = "^22.5"
 discord-py = "^2.6.4"
 feedparser = "^6.0.12"
@@ -50,8 +50,8 @@ pre-commit = "^4.3.0"
 flake8 = "^7.3.0"
 black = "^25.9.0"
 mypy = "^1.18.2"
-pylint = "^3.3.8"
-isort = "^6.1.0"
+pylint = "^4.0.2"
+isort = "^7.0.0"
 types-beautifulsoup4 = "^4.12.0.20250516"
 types-requests = "^2.32.4.20250913"
 
