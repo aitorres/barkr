@@ -12,7 +12,8 @@ keywords = [
     "crossposting",
     "mastodon",
     "fediverse",
-    "twitter"
+    "twitter",
+    "bluesky",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
