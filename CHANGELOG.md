@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.10] - 2025-12-22
+
+### Fixed
+
+- Bluesky connection now ignores quote posts when fetching new messages, to prevent reposting them across connections without the underlying context.
+- Minor fixes on tests.
+
+### Changed
+
+- Add support for Python 3.14, drop support for Python 3.9
+- Minor dependency updates.
+
 ## [0.10.9] - 2025-10-02
 
 ### Changed
