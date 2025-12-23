@@ -13,6 +13,7 @@ from atproto_client.models import (  # type: ignore
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
     AppBskyEmbedRecord,
+    AppBskyEmbedRecordWithMedia,
     AppBskyEmbedVideo,
     ComAtprotoRepoStrongRef,
 )
@@ -27,23 +28,20 @@ from barkr.connections.bluesky import (
     BLUESKY_EXPONENTIAL_BACKOFF_RETRIES,
     _get_current_indexed_at,
     _get_meta_tag_from_html_metadata,
+    _is_quote_embed,
 )
 
 
 @dataclass(frozen=True)
 class MockUploadBlobResponse:
-    """
-    Mock class to simulate the response of atproto_client.Client.upload_blob
-    """
+    """Mock response for Client.upload_blob."""
 
     blob: BlobRef
 
 
 @dataclass(frozen=True)
 class MockResponse:
-    """
-    Mock class to simulate the response of requests.get
-    """
+    """Minimal HTTP response mock (content + status)."""
 
     content: bytes
     status_code: int
@@ -51,9 +49,7 @@ class MockResponse:
 
 @dataclass(frozen=True)
 class MockExternal:
-    """
-    Mock class to simulate a Bluesky external embed
-    """
+    """Represents a Bluesky external embed payload."""
 
     title: str
     uri: str
@@ -62,18 +58,14 @@ class MockExternal:
 
 @dataclass(frozen=True)
 class MockExternalEmbed:
-    """
-    Mock class to simulate a Bluesky external embed
-    """
+    """Container for external embed in mocked posts."""
 
     external: Optional[MockExternal] = None
 
 
 @dataclass(frozen=True)
 class MockRecord:
-    """
-    Mock class to simulate a Bluesky record
-    """
+    """Mock Bluesky record with text, reply, embed and langs."""
 
     text: str
     reply: Optional[str] = None
@@ -83,9 +75,7 @@ class MockRecord:
 
 @dataclass(frozen=True)
 class MockViewer:
-    """
-    Mock class to simulate the viewer of a Bluesky post
-    """
+    """Mock viewer info; only 'repost' is relevant here."""
 
     # NOTE: this is not a string in the real contract, but enough
     # for our tests
@@ -94,18 +84,14 @@ class MockViewer:
 
 @dataclass(frozen=True)
 class MockAuthor:
-    """
-    Mock class to simulate a Bluesky author
-    """
+    """Mock author with a default DID."""
 
     did: str = "did:plc:z72i7hdynmk6r22z27h6tvur"
 
 
 @dataclass(frozen=True)
 class MockPostData:
-    """
-    Mock class to simulate a Bluesky post data
-    """
+    """Post wrapper carrying indexed_at, record, author and viewer."""
 
     indexed_at: str
     record: MockRecord
@@ -115,44 +101,34 @@ class MockPostData:
 
 @dataclass(frozen=True)
 class MockPost:
-    """
-    Mock class to simulate a Bluesky post
-    """
+    """Envelope for a single feed item."""
 
     post: MockPostData
 
 
 @dataclass(frozen=True)
 class MockFeed:
-    """
-    Mock class to simulate a Bluesky feed
-    """
+    """Feed response containing a list of posts."""
 
     feed: list[MockPost]
 
 
 @dataclass(frozen=True)
 class MockPostDetails:
-    """
-    Mock class to simulate a Bluesky post details response from get_posts
-    """
+    """Minimal post details returned by get_posts."""
 
     indexed_at: str
 
 
 @dataclass(frozen=True)
 class MockGetPostsResponse:
-    """
-    Mock class to simulate the response of Client.get_posts
-    """
+    """Response wrapper for Client.get_posts."""
 
     posts: list[MockPostDetails]
 
 
 def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Basic unit tests for the BlueskyConnection class
-    """
+    """Basic end-to-end reads and filtering behavior."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     bluesky_no_initial_messages = BlueskyConnection(
@@ -278,15 +254,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_bluesky_reconstructs_embeds_successfully(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """
-    Test that the Bluesky connection reconstructs embeds successfully.
-    The test case reproduces a real-world scenario where, when a user posts a message
-    that only contains a link, Bluesky can trim the actual URL in the post's message
-    and include the full URL in the embed.
-
-    Since we're ignoring the embed in the generic Message, we need to reconstruct
-    the URL on the message's text.
-    """
+    """Reconstruct trimmed URLs from external embeds when needed."""
     # We need to patch `isinstance` to make our mocked classes work,
     # so we preserve the original `isinstance` function
     original_isinstance = isinstance
@@ -378,9 +346,7 @@ def test_bluesky_reconstructs_embeds_successfully(
 
 
 def test_get_current_indexed_at() -> None:
-    """
-    Test that `_get_current_indexed_at` returns a timestamp.
-    """
+    """_get_current_indexed_at returns a near-now UTC timestamp."""
     current_time = datetime.now(timezone.utc)
     indexed_at = _get_current_indexed_at()
 
@@ -391,19 +357,12 @@ def test_get_current_indexed_at() -> None:
 
 
 def test_get_meta_tag_from_html_metadata() -> None:
-    """
-    Tests to check that the meta tag values are extracted correctly
-    from the HTML metadata.
-    """
+    """Extract meta tag values from small HTML snippets."""
     # Test case 1: Meta tag with the specified property exists
-    html_content = """
-    <html>
-        <head>
-            <meta property="og:title" content="Test Title">
-            <meta property="og:description" content="Test Description">
-        </head>
-    </html>
-    """
+    html_content = (
+        "<html><head><meta property='og:title' content='Test Title'>"
+        "<meta property='og:description' content='Test Description'></head></html>"
+    )
     soup = BeautifulSoup(html_content, "html.parser")
     result = _get_meta_tag_from_html_metadata(soup, "og:title")
     assert result == "Test Title"
@@ -413,36 +372,23 @@ def test_get_meta_tag_from_html_metadata() -> None:
     assert result is None
 
     # Test case 3: Meta tag with no content attribute
-    html_content = """
-    <html>
-        <head>
-            <meta property="og:title">
-        </head>
-    </html>
-    """
+    html_content = "<html><head><meta property='og:title'></head></html>"
     soup = BeautifulSoup(html_content, "html.parser")
     result = _get_meta_tag_from_html_metadata(soup, "og:title")
     assert result is None
 
     # Test case 4: multiple meta tags with the same property
-    html_content = """
-    <html>
-        <head>
-            <meta property="og:title" content="Title 1">
-            <meta property="og:title" content="Title 2">
-        </head>
-    </html>
-    """
+    html_content = (
+        "<html><head><meta property='og:title' content='Title 1'>"
+        "<meta property='og:title' content='Title 2'></head></html>"
+    )
     soup = BeautifulSoup(html_content, "html.parser")
     result = _get_meta_tag_from_html_metadata(soup, "og:title")
     assert result == "Title 1"
 
 
 def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test `_generate_post_embed_and_facets` to ensure it correctly generates
-    embed objects and facets for links in the text.
-    """
+    """Generate external embed and URL facets from text."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
@@ -454,25 +400,16 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
 
     def mock_requests_get(url: str, *_args, **_kwargs):
         if "valid-url.com" in url:
-            html_content = """
-            <html>
-                <head>
-                    <title>Valid URL</title>
-                    <meta property="og:description" content="A valid URL description">
-                    <meta property="og:image" content="https://valid-url.com/image.jpg">
-                </head>
-            </html>
-            """
+            html_content = (
+                "<html><head><title>Valid URL</title>"
+                "<meta property='og:description' content='A valid URL description'>"
+                "<meta property='og:image' content='https://valid-url.com/image.jpg'>"
+                "</head></html>"
+            )
             return MockResponse(html_content.encode("utf-8"), 200)
 
         if "no-meta.com" in url:
-            html_content = """
-            <html>
-                <head>
-                    <title>No Meta</title>
-                </head>
-            </html>
-            """
+            html_content = "<html><head><title>No Meta</title></head></html>"
             return MockResponse(html_content.encode("utf-8"), 200)
 
         return MockResponse(b"", 404)
@@ -556,11 +493,7 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
 def test_generate_post_embed_and_facets_timeout_cases(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """
-    Test `_generate_post_embed_and_facets` to ensure it correctly generates
-    embed objects and facets for links in the text whenever possible
-    when facing timeouts on metadata requests.
-    """
+    """Recover facets despite metadata timeouts; embed if later URL works."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
@@ -586,15 +519,12 @@ def test_generate_post_embed_and_facets_timeout_cases(
         if "url-that-times-out.com" in url:
             raise RequestException("Failed to fetch metadata")
 
-        html_content = """
-            <html>
-                <head>
-                    <title>Valid URL</title>
-                    <meta property="og:description" content="A valid URL description">
-                    <meta property="og:image" content="https://valid-url.com/image.jpg">
-                </head>
-            </html>
-        """
+        html_content = (
+            "<html><head><title>Valid URL</title>"
+            "<meta property='og:description' content='A valid URL description'>"
+            "<meta property='og:image' content='https://valid-url.com/image.jpg'>"
+            "</head></html>"
+        )
         return MockResponse(html_content.encode("utf-8"), 200)
 
     monkeypatch.setattr("requests.get", mock_requests_get_fail)
@@ -627,10 +557,7 @@ def test_generate_post_embed_and_facets_timeout_cases(
 
 
 def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Tests that we can extract the media list from a Bluesky embed
-    successfully.
-    """
+    """Extract media bytes and types from supported embed variants."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
@@ -742,10 +669,7 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test that the _upload_image_url_to_atproto_blob method correctly handles
-    retrieving an image from a URL and uploading it as a blob to Atproto.
-    """
+    """Fetch image by URL and upload as blob; handle failures."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     conn = BlueskyConnection(
@@ -835,10 +759,7 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Test the _compress_image method to ensure it correctly compresses images
-    to fit within the Bluesky size limit.
-    """
+    """Compress large images under Bluesky size limit when enabled."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
     connection = BlueskyConnection(
         "BlueskyClass",
@@ -886,11 +807,7 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_get_post_indexed_at_with_retry(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Tests for the _get_post_indexed_at_with_retry method that retrieves
-    a recently-created bluesky post's indexed_at timestamp with
-    exponential backoff retries.
-    """
+    """Retrieve indexed_at with exponential backoff and sensible fallback."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
     connection = BlueskyConnection(
@@ -982,10 +899,7 @@ def test_get_post_indexed_at_with_retry(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Setups the monkeypatch calls to enable testing the Bluesky connection
-    without actually connecting to the Bluesky API.
-    """
+    """Common monkeypatches to avoid real API calls."""
     monkeypatch.setattr(
         "barkr.connections.bluesky.Client.login",
         lambda *_: None,
@@ -995,3 +909,59 @@ def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> No
         "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
         lambda *_: MockFeed([]),
     )
+
+
+def test_is_quote_embed() -> None:
+    """Identify quote-embed types vs. other embed variants."""
+    assert _is_quote_embed(None) is False
+
+    external_embed = AppBskyEmbedExternal.Main(
+        external=AppBskyEmbedExternal.External(
+            uri="https://example.com",
+            title="Example Title",
+            description="Example Description",
+        )
+    )
+    assert _is_quote_embed(external_embed) is False
+
+    images_embed = AppBskyEmbedImages.Main(
+        images=[
+            AppBskyEmbedImages.Image(
+                alt="Image 1",
+                image=BlobRef(
+                    ref="bafkreihash",
+                    mimeType="image/jpeg",
+                    size=12345,
+                ),
+            )
+        ]
+    )
+    assert _is_quote_embed(images_embed) is False
+
+    video_embed = AppBskyEmbedVideo.Main(
+        video=BlobRef(
+            ref="bafkreiothervid",
+            mimeType="video/mp4",
+            size=67890,
+        )
+    )
+    assert _is_quote_embed(video_embed) is False
+
+    record_embed = AppBskyEmbedRecord.Main(
+        record=ComAtprotoRepoStrongRef.Main(
+            uri="at://did:plc:test/app.bsky.feed.post/abc123",
+            cid="bafyreirecordcid",
+        )
+    )
+    assert _is_quote_embed(record_embed) is True
+
+    record_with_media_embed = AppBskyEmbedRecordWithMedia.Main(
+        record=AppBskyEmbedRecord.Main(
+            record=ComAtprotoRepoStrongRef.Main(
+                uri="at://did:plc:test/app.bsky.feed.post/xyz789",
+                cid="bafyreirecordwithmediacid",
+            )
+        ),
+        media=images_embed,
+    )
+    assert _is_quote_embed(record_with_media_embed) is True

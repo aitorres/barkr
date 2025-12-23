@@ -156,6 +156,9 @@ class BlueskyConnection(Connection):
                 ):
                     record = post.record
                     if (embed := record.embed) is not None:
+                        if _is_quote_embed(embed):
+                            continue
+
                         text = self._process_text_with_embed(record.text, embed)
                     else:
                         text = record.text
@@ -812,3 +815,32 @@ def _get_current_indexed_at() -> datetime:
     """
 
     return datetime.now(timezone.utc)
+
+
+def _is_quote_embed(
+    embed: Optional[
+        Union[
+            AppBskyEmbedExternal.Main,
+            AppBskyEmbedRecord.Main,
+            AppBskyEmbedImages.Main,
+            AppBskyEmbedVideo.Main,
+            AppBskyEmbedRecordWithMedia.Main,
+        ]
+    ],
+) -> bool:
+    """
+    Determines if a given Bluesky post embed represents a quote to
+    another post. Useful to skip quote posts when fetching messages,
+    as we might not have all the context to reconstruct the quoted post
+    on other connections.
+
+    :param embed: The embed object to check
+    :return: True if the embed is a quote, False otherwise
+    """
+
+    if embed is None:
+        return False
+
+    return isinstance(
+        embed, (AppBskyEmbedRecord.Main, AppBskyEmbedRecordWithMedia.Main)
+    )
