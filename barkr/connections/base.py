@@ -5,6 +5,8 @@ connections to social media networks, chat services, etc.
 
 import logging
 from enum import Enum
+from threading import Lock
+from typing import Optional
 
 from barkr.models import Message, MessageType
 
@@ -140,3 +142,73 @@ class Connection:
         """
 
         raise NotImplementedError(f"Post not implemented for connection {self.name}")
+
+
+class ThreadAwareConnection(Connection):
+    """
+    Extended Connection class that supports reply-chain (thread) tracking
+    across connections.
+
+    This class maintains a shared mapping of message IDs across different connections,
+    enabling self-reply threads to be preserved when crossposting.
+
+    Format: {(source_connection, source_id): {dest_connection: dest_id}}
+    Example: {('bluesky', 'at://did.../post/123'): {'mastodon': 'MA1'}}
+    """
+
+    message_id_map: dict[tuple[str, str], dict[str, str]] = {}
+    message_id_map_lock: Lock = Lock()
+
+    def _store_message_mapping(
+        self, source_connection: str, source_id: str, dest_id: str
+    ) -> None:
+        """
+        Store a mapping between a source message ID and a destination message ID.
+
+        :param source_connection: Name of the source connection
+        :param source_id: ID of the message in the source connection
+        :param dest_id: ID of the message in this (destination) connection
+        """
+
+        with self.message_id_map_lock:
+            key = (source_connection, source_id)
+
+            if key not in self.message_id_map:
+                self.message_id_map[key] = {}
+
+            self.message_id_map[key][self.name] = dest_id
+
+            logger.debug(
+                "Stored message mapping: %s/%s -> %s/%s",
+                source_connection,
+                source_id,
+                self.name,
+                dest_id,
+            )
+
+    def _resolve_reply_to_id(
+        self, source_connection: str, source_id: str
+    ) -> Optional[str]:
+        """
+        Resolve a source message ID to the corresponding ID in this connection.
+
+        :param source_connection: Name of the source connection
+        :param source_id: ID of the message in the source connection
+        :return: ID in this connection, or None if no mapping exists
+        """
+
+        with self.message_id_map_lock:
+            key = (source_connection, source_id)
+            mapping = self.message_id_map.get(key, {})
+            dest_id = mapping.get(self.name)
+
+            if dest_id:
+                logger.debug(
+                    "Resolved reply: %s/%s -> %s/%s",
+                    source_connection,
+                    source_id,
+                    self.name,
+                    dest_id,
+                )
+
+            return dest_id

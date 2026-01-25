@@ -69,8 +69,13 @@ def test_rss_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     # No writing at all!
     assert not rss.posted_message_ids
     rss.write([])
-    rss.write([Message("id1", "test content")])
-    rss.write([Message("id1", "test content"), Message("id2", "test content")])
+    rss.write([Message("id1", "test content", source_connection="test")])
+    rss.write(
+        [
+            Message("id1", "test content", source_connection="test"),
+            Message("id2", "test content", source_connection="test"),
+        ]
+    )
     assert not rss.posted_message_ids
 
     # Reading returns a list of messages as expected

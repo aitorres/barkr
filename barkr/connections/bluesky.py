@@ -37,7 +37,7 @@ from bs4 import BeautifulSoup, Tag
 from httpx import Timeout
 from PIL import Image
 
-from barkr.connections.base import Connection, ConnectionMode
+from barkr.connections.base import ConnectionMode, ThreadAwareConnection
 from barkr.models import Media, Message, MessageAllowedReplies, MessageType
 from barkr.utils import (
     REQUESTS_EMBED_GET_TIMEOUT,
@@ -59,7 +59,7 @@ BLUESKY_HANDLED_EXCEPTIONS: Final[tuple[type[RequestErrorBase], ...]] = (
 )
 
 
-class BlueskyConnection(Connection):
+class BlueskyConnection(ThreadAwareConnection):
     """
     Custom connection class for Bluesky accounts,
     supporting reading and writing statuses from the authenticated user.
@@ -146,10 +146,6 @@ class BlueskyConnection(Connection):
                 if post.viewer is not None and post.viewer.repost is not None:
                     continue
 
-                # Ignoring replies
-                if post.record.reply is not None:
-                    continue
-
                 if (
                     self.min_id is None
                     or datetime.fromisoformat(post.indexed_at) > self.min_id
@@ -170,12 +166,20 @@ class BlueskyConnection(Connection):
                     media_list = self._extract_media_list_from_embed(
                         post.author.did, embed
                     )
+
+                    reply_to_id = None
+                    if record.reply is not None and record.reply.parent is not None:
+                        reply_to_id = record.reply.parent.uri
+
                     messages.append(
                         Message(
                             id=post.indexed_at,
                             message=text,
+                            source_connection=self.name,
                             language=language,
                             media=media_list,
+                            source_id=post.uri,
+                            reply_to_id=reply_to_id,
                         )
                     )
 

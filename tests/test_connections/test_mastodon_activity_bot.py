@@ -60,9 +60,9 @@ def test_mastodon_activity_bot_init(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("requests.post", mock_requests_post)
 
-    bot.write([Message("1", "Hello world!")])
+    bot.write([Message("1", "Hello world!", source_connection="test")])
     assert posted_messages == ["Hello world!"]
-    bot.write([Message("2", "Hello world 2!")])
+    bot.write([Message("2", "Hello world 2!", source_connection="test")])
     assert posted_messages == ["Hello world!", "Hello world 2!"]
 
     # Handling errors
@@ -76,6 +76,6 @@ def test_mastodon_activity_bot_init(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("requests.post", mock_requests_post_failure)
 
-    bot.write([Message("3", "This will fail!")])
+    bot.write([Message("3", "This will fail!", source_connection="test")])
     # No change in posted messages
     assert posted_messages == ["Hello world!", "Hello world 2!"]

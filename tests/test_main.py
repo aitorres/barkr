@@ -22,8 +22,16 @@ class ConnectionMockup(Connection):
 
     def _fetch(self) -> list[Message]:
         return [
-            Message(id=f"{self.name}-Id1", message=f"{self.name}-TestMsg1"),
-            Message(id=f"{self.name}-Id2", message=f"{self.name}-TestMsg2"),
+            Message(
+                id=f"{self.name}-Id1",
+                message=f"{self.name}-TestMsg1",
+                source_connection=self.name,
+            ),
+            Message(
+                id=f"{self.name}-Id2",
+                message=f"{self.name}-TestMsg2",
+                source_connection=self.name,
+            ),
         ]
 
     def _post(self, messages: list[Message]) -> list[str]:
@@ -84,12 +92,28 @@ def test_barkr_read_only() -> None:
     barkr.read()
     assert barkr.message_queues == {
         "TestCon1": [
-            Message(id="TestCon2-Id1", message="TestCon2-TestMsg1"),
-            Message(id="TestCon2-Id2", message="TestCon2-TestMsg2"),
+            Message(
+                id="TestCon2-Id1",
+                message="TestCon2-TestMsg1",
+                source_connection="TestCon2",
+            ),
+            Message(
+                id="TestCon2-Id2",
+                message="TestCon2-TestMsg2",
+                source_connection="TestCon2",
+            ),
         ],
         "TestCon2": [
-            Message(id="TestCon1-Id1", message="TestCon1-TestMsg1"),
-            Message(id="TestCon1-Id2", message="TestCon1-TestMsg2"),
+            Message(
+                id="TestCon1-Id1",
+                message="TestCon1-TestMsg1",
+                source_connection="TestCon1",
+            ),
+            Message(
+                id="TestCon1-Id2",
+                message="TestCon1-TestMsg2",
+                source_connection="TestCon1",
+            ),
         ],
     }
     assert test_connection_1.posted_messages == []
@@ -125,12 +149,12 @@ def test_barkr_write_only() -> None:
     # forcing messages to appear in the queue
     barkr.message_queues = {
         "TestCon1": [
-            Message(id="Idx", message="msg1"),
-            Message(id="Idx", message="msg2"),
+            Message(id="Idx", message="msg1", source_connection="test"),
+            Message(id="Idx", message="msg2", source_connection="test"),
         ],
         "TestCon2": [
-            Message(id="Idx", message="msg3"),
-            Message(id="Idx", message="msg4"),
+            Message(id="Idx", message="msg3", source_connection="test"),
+            Message(id="Idx", message="msg4", source_connection="test"),
         ],
     }
     barkr.write()
@@ -155,8 +179,16 @@ def test_barkr_read_write() -> None:
     assert barkr.message_queues == {
         "TestCon1": [],
         "TestCon2": [
-            Message(id="TestCon1-Id1", message="TestCon1-TestMsg1"),
-            Message(id="TestCon1-Id2", message="TestCon1-TestMsg2"),
+            Message(
+                id="TestCon1-Id1",
+                message="TestCon1-TestMsg1",
+                source_connection="TestCon1",
+            ),
+            Message(
+                id="TestCon1-Id2",
+                message="TestCon1-TestMsg2",
+                source_connection="TestCon1",
+            ),
         ],
     }
     assert test_connection_1.posted_messages == []
@@ -189,19 +221,19 @@ def test_barkr_write_message() -> None:
         test_connection_3,
     ]
 
-    barkr.write_message(Message(id="Idx", message="msg1"))
+    barkr.write_message(Message(id="Idx", message="msg1", source_connection="test"))
     assert test_connection_1.posted_messages == ["msg1"]
     assert test_connection_2.posted_messages == ["msg1"]
     assert test_connection_3.posted_messages == []
 
-    barkr.write_message(Message(id="Idx", message="msg2"))
+    barkr.write_message(Message(id="Idx", message="msg2", source_connection="test"))
     assert test_connection_1.posted_messages == ["msg1", "msg2"]
     assert test_connection_2.posted_messages == ["msg1", "msg2"]
     assert test_connection_3.posted_messages == []
 
     # Handling exceptions per-connection
     test_connection_1.raise_exception_on_write = True
-    barkr.write_message(Message(id="Idx", message="msg3"))
+    barkr.write_message(Message(id="Idx", message="msg3", source_connection="test"))
     assert test_connection_1.posted_messages == ["msg1", "msg2"]
     assert test_connection_2.posted_messages == ["msg1", "msg2", "msg3"]
     assert test_connection_3.posted_messages == []
@@ -231,12 +263,28 @@ def test_barkr_write_rate_limit() -> None:
     assert barkr.message_queues == {
         "TestCon0": [],
         "TestCon1": [
-            Message(id="TestCon0-Id1", message="TestCon0-TestMsg1"),
-            Message(id="TestCon0-Id2", message="TestCon0-TestMsg2"),
+            Message(
+                id="TestCon0-Id1",
+                message="TestCon0-TestMsg1",
+                source_connection="TestCon0",
+            ),
+            Message(
+                id="TestCon0-Id2",
+                message="TestCon0-TestMsg2",
+                source_connection="TestCon0",
+            ),
         ],
         "TestCon2": [
-            Message(id="TestCon0-Id1", message="TestCon0-TestMsg1"),
-            Message(id="TestCon0-Id2", message="TestCon0-TestMsg2"),
+            Message(
+                id="TestCon0-Id1",
+                message="TestCon0-TestMsg1",
+                source_connection="TestCon0",
+            ),
+            Message(
+                id="TestCon0-Id2",
+                message="TestCon0-TestMsg2",
+                source_connection="TestCon0",
+            ),
         ],
     }
 
@@ -245,10 +293,18 @@ def test_barkr_write_rate_limit() -> None:
     assert barkr.message_queues == {
         "TestCon0": [],
         "TestCon1": [
-            Message(id="TestCon0-Id2", message="TestCon0-TestMsg2"),
+            Message(
+                id="TestCon0-Id2",
+                message="TestCon0-TestMsg2",
+                source_connection="TestCon0",
+            ),
         ],
         "TestCon2": [
-            Message(id="TestCon0-Id2", message="TestCon0-TestMsg2"),
+            Message(
+                id="TestCon0-Id2",
+                message="TestCon0-TestMsg2",
+                source_connection="TestCon0",
+            ),
         ],
     }
     assert test_connection_1.posted_messages == ["TestCon0-TestMsg1"]

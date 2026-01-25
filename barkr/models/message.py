@@ -27,6 +27,7 @@ class Message:
     # Main attributes
     id: str
     message: str
+    source_connection: str
 
     # Messages can optionally have media attached to them, which are
     # stored in a list per their byte representation and MIME type.
@@ -37,6 +38,10 @@ class Message:
     label: Optional[str] = None
     visibility: MessageVisibility = MessageVisibility.PUBLIC
     allowed_replies: Optional[list[MessageAllowedReplies]] = None
+
+    # Reply tracking - these refer to the source connection's message IDs
+    source_id: Optional[str] = None
+    reply_to_id: Optional[str] = None
 
     def has_content(self, supported_message_type: MessageType) -> bool:
         """

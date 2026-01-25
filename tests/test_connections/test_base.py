@@ -22,7 +22,9 @@ def test_connection() -> None:
     assert connection_1.modes == [ConnectionMode.READ]
 
     # This shouldn't raise any exceptions
-    connection_1.write([Message(id="id1", message="test message")])
+    connection_1.write(
+        [Message(id="id1", message="test message", source_connection="test")]
+    )
 
     with pytest.raises(NotImplementedError):
         connection_1.read()
@@ -35,7 +37,9 @@ def test_connection() -> None:
     assert not connection_2.read()
 
     with pytest.raises(NotImplementedError):
-        connection_2.write([Message(id="id1", message="test message")])
+        connection_2.write(
+            [Message(id="id1", message="test message", source_connection="test")]
+        )
 
     # Read/Write connection base
     connection_3 = Connection("Read/Write", [ConnectionMode.READ, ConnectionMode.WRITE])
@@ -46,7 +50,9 @@ def test_connection() -> None:
         connection_1.read()
 
     with pytest.raises(NotImplementedError):
-        connection_2.write([Message(id="id1", message="test message")])
+        connection_2.write(
+            [Message(id="id1", message="test message", source_connection="test")]
+        )
 
 
 def test_connection_mode() -> None:
@@ -84,9 +90,9 @@ def test_connection_handles_posted_message_ids(monkeypatch: pytest.MonkeyPatch) 
     # Mock the _fetch method to return a list of messages with IDs 1, 2, and 3
     def mock_fetch() -> list[Message]:
         return [
-            Message(id="1", message="test message 1"),
-            Message(id="2", message="test message 2"),
-            Message(id="3", message="test message 3"),
+            Message(id="1", message="test message 1", source_connection="test"),
+            Message(id="2", message="test message 2", source_connection="test"),
+            Message(id="3", message="test message 3", source_connection="test"),
         ]
 
     monkeypatch.setattr(connection, "_fetch", mock_fetch)
@@ -109,9 +115,9 @@ def test_connection_handles_posted_message_ids(monkeypatch: pytest.MonkeyPatch) 
     # Post the messages
     connection.write(
         [
-            Message(id="1", message="test message 1"),
-            Message(id="2", message="test message 2"),
-            Message(id="3", message="test message 3"),
+            Message(id="1", message="test message 1", source_connection="test"),
+            Message(id="2", message="test message 2", source_connection="test"),
+            Message(id="3", message="test message 3", source_connection="test"),
         ]
     )
     assert connection.posted_message_ids == {"1", "2", "3"}
@@ -124,7 +130,7 @@ def test_connection_handles_posted_message_ids(monkeypatch: pytest.MonkeyPatch) 
     # Post a new message
     connection.write(
         [
-            Message(id="4", message="test message 4"),
+            Message(id="4", message="test message 4", source_connection="test"),
         ]
     )
     assert connection.posted_message_ids == {"1", "2", "3", "4"}
@@ -158,9 +164,9 @@ def test_connection_avoids_infinite_loops(monkeypatch: pytest.MonkeyPatch) -> No
     # First mock: Connection A fetches messages with IDs 1, 2, and 3
     def mock_fetch_a() -> list[Message]:
         return [
-            Message(id="1", message="test message 1"),
-            Message(id="2", message="test message 2"),
-            Message(id="3", message="test message 3"),
+            Message(id="1", message="test message 1", source_connection="Connection A"),
+            Message(id="2", message="test message 2", source_connection="Connection A"),
+            Message(id="3", message="test message 3", source_connection="Connection A"),
         ]
 
     monkeypatch.setattr(connection_a, "_fetch", mock_fetch_a)
@@ -182,9 +188,15 @@ def test_connection_avoids_infinite_loops(monkeypatch: pytest.MonkeyPatch) -> No
     # Third mock: Connection B fetches messages with its new IDs
     def mock_fetch_b() -> list[Message]:
         return [
-            Message(id="1-b", message="test message 1"),
-            Message(id="2-b", message="test message 2"),
-            Message(id="3-b", message="test message 3"),
+            Message(
+                id="1-b", message="test message 1", source_connection="Connection B"
+            ),
+            Message(
+                id="2-b", message="test message 2", source_connection="Connection B"
+            ),
+            Message(
+                id="3-b", message="test message 3", source_connection="Connection B"
+            ),
         ]
 
     monkeypatch.setattr(connection_b, "_fetch", mock_fetch_b)
@@ -211,9 +223,9 @@ def test_connection_handles_read_exceptions(monkeypatch: pytest.MonkeyPatch) -> 
         if attempts == 1:
             raise ValueError("Test exception")
         return [
-            Message(id="1", message="test message 1"),
-            Message(id="2", message="test message 2"),
-            Message(id="3", message="test message 3"),
+            Message(id="1", message="test message 1", source_connection="test"),
+            Message(id="2", message="test message 2", source_connection="test"),
+            Message(id="3", message="test message 3", source_connection="test"),
         ]
 
     monkeypatch.setattr(connection, "_fetch", mock_fetch_a)
@@ -261,16 +273,16 @@ def test_connection_does_not_write_empty_message(
     monkeypatch.setattr(connection, "_post", mock_post)
 
     # Post an empty message
-    connection.write([Message(id="1", message="")])
+    connection.write([Message(id="1", message="", source_connection="test")])
     assert not posted_message_ids
     assert not connection.posted_message_ids
 
     # Let's try a mix
     connection.write(
         [
-            Message(id="1", message=""),
-            Message(id="2", message="test message 2"),
-            Message(id="3", message="test message 3"),
+            Message(id="1", message="", source_connection="test"),
+            Message(id="2", message="test message 2", source_connection="test"),
+            Message(id="3", message="test message 3", source_connection="test"),
         ]
     )
     assert posted_message_ids == ["2", "3"]
@@ -284,11 +296,13 @@ def test_connection_does_not_write_empty_message(
             id="4",
             message="",
             media=[Media(mime_type="image/jpeg", content=b"image data")],
+            source_connection="test",
         ),
         Message(
             id="5",
             message="",
             media=[Media(mime_type="video/mp4", content=b"video data")],
+            source_connection="test",
         ),
     ]
     connection.write(media_list)
@@ -301,11 +315,13 @@ def test_connection_does_not_write_empty_message(
             id="6",
             message="test message 6",
             media=[Media(mime_type="image/jpeg", content=b"image data")],
+            source_connection="test",
         ),
         Message(
             id="7",
             message="test message 7",
             media=[Media(mime_type="video/mp4", content=b"video data")],
+            source_connection="test",
         ),
     ]
     connection.write(media_list)
@@ -320,11 +336,13 @@ def test_connection_does_not_write_empty_message(
             id="8",
             message="",
             media=[Media(mime_type="image/jpeg", content=b"image data")],
+            source_connection="test",
         ),
         Message(
             id="9",
             message="",
             media=[Media(mime_type="video/mp4", content=b"video data")],
+            source_connection="test",
         ),
     ]
     connection.write(media_list)
@@ -336,11 +354,13 @@ def test_connection_does_not_write_empty_message(
             id="10",
             message="test message 10",
             media=[Media(mime_type="image/jpeg", content=b"image data")],
+            source_connection="test",
         ),
         Message(
             id="11",
             message="test message 11",
             media=[Media(mime_type="video/mp4", content=b"video data")],
+            source_connection="test",
         ),
     ]
     connection.write(media_list)

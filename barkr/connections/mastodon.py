@@ -14,7 +14,7 @@ from mastodon import Mastodon
 from mastodon.errors import MastodonNetworkError
 from mastodon.return_types import MediaAttachment, Status
 
-from barkr.connections.base import Connection, ConnectionMode
+from barkr.connections.base import ConnectionMode, ThreadAwareConnection
 from barkr.models import Media, Message, MessageType
 from barkr.models.message import MessageVisibility
 from barkr.utils import REQUESTS_EMBED_GET_TIMEOUT, REQUESTS_HEADERS
@@ -24,7 +24,7 @@ logger = logging.getLogger()
 MASTODON_WRITE_RETRIES: Final[int] = 3
 
 
-class MastodonConnection(Connection):
+class MastodonConnection(ThreadAwareConnection):
     """
     Custom connection class for Mastodon instances,
     supporting reading and writing statuses from the authenticated user.
@@ -110,6 +110,7 @@ class MastodonConnection(Connection):
             Message(
                 id=status["id"],
                 message=BeautifulSoup(status["content"], "lxml").text,
+                source_connection=self.name,
                 language=status["language"],
                 label=status["spoiler_text"] or None,
                 visibility=MessageVisibility.from_mastodon_visibility(
@@ -132,6 +133,22 @@ class MastodonConnection(Connection):
         posted_message_ids: list[str] = []
 
         for message in messages:
+            in_reply_to_id: Optional[str] = None
+
+            if message.reply_to_id is not None:
+                in_reply_to_id = self._resolve_reply_to_id(
+                    message.source_connection, message.reply_to_id
+                )
+
+                if in_reply_to_id is None:
+                    logger.info(
+                        "Skipping reply message (parent not crossposted): %s -> %s/%s",
+                        message.message[:50],
+                        message.source_connection,
+                        message.reply_to_id,
+                    )
+                    continue
+
             attempts = 0
 
             media_list = _post_media_list_to_mastodon(self.service, message.media)
@@ -144,6 +161,7 @@ class MastodonConnection(Connection):
                         spoiler_text=message.label or "",
                         visibility=message.visibility.to_mastodon_visibility(),
                         media_ids=media_list,
+                        in_reply_to_id=in_reply_to_id,
                     )
                 except MastodonNetworkError as e:
                     if attempts < MASTODON_WRITE_RETRIES - 1:
@@ -166,10 +184,16 @@ class MastodonConnection(Connection):
                 else:
                     break
 
-            posted_message_ids.append(posted_message["id"])
+            posted_message_id = posted_message["id"]
+            posted_message_ids.append(posted_message_id)
             logger.info(
                 "Posted status to Mastodon (%s): %s", self.name, message.message
             )
+
+            if message.source_id is not None:
+                self._store_message_mapping(
+                    message.source_connection, message.source_id, posted_message_id
+                )
 
         return posted_message_ids
 

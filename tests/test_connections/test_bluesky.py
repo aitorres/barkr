@@ -64,11 +64,25 @@ class MockExternalEmbed:
 
 
 @dataclass(frozen=True)
+class MockReplyParent:
+    """Mock reply parent with URI."""
+
+    uri: str
+
+
+@dataclass(frozen=True)
+class MockReply:
+    """Mock reply structure with parent."""
+
+    parent: MockReplyParent
+
+
+@dataclass(frozen=True)
 class MockRecord:
     """Mock Bluesky record with text, reply, embed and langs."""
 
     text: str
-    reply: Optional[str] = None
+    reply: Optional[MockReply] = None
     embed: Optional[MockExternalEmbed] = None
     langs: Optional[list[str]] = None
 
@@ -95,6 +109,7 @@ class MockPostData:
 
     indexed_at: str
     record: MockRecord
+    uri: str = "at://did:plc:test/app.bsky.feed.post/testid123"
     author: MockAuthor = MockAuthor()
     viewer: Optional[MockViewer] = None
 
@@ -207,14 +222,22 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 MockPost(
                     MockPostData(
                         "2001-10-31T02:30:00.000-05:00",
-                        MockRecord("Hello, world 2!", reply="12345678"),
+                        MockRecord(
+                            "Hello, world 2!",
+                            reply=MockReply(
+                                MockReplyParent(
+                                    "at://did:plc:test/app.bsky.feed.post/12345678"
+                                )
+                            ),
+                        ),
                     )
                 ),
             ]
         ),
     )
     messages = bluesky.read()
-    assert len(messages) == 0
+    assert len(messages) == 1
+    assert messages[0].reply_to_id == "at://did:plc:test/app.bsky.feed.post/12345678"
 
     # Testing that Bluesky ignores posts that are reposts
     bluesky.min_id = None
@@ -225,7 +248,14 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 MockPost(
                     MockPostData(
                         "2001-10-31T02:30:00.000-05:00",
-                        MockRecord("Hello, world 2!", reply="12345678"),
+                        MockRecord(
+                            "Hello, world 2!",
+                            reply=MockReply(
+                                MockReplyParent(
+                                    "at://did:plc:test/app.bsky.feed.post/12345678"
+                                )
+                            ),
+                        ),
                         viewer=MockViewer(repost="12345678"),
                     )
                 ),

@@ -103,8 +103,12 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     messages = mastodon.read()
 
     assert messages == [
-        Message(id="11223344", message="test message 1"),
-        Message(id="55667788", message="test message 2"),
+        Message(
+            id="11223344", message="test message 1", source_connection="MastodonClass"
+        ),
+        Message(
+            id="55667788", message="test message 2", source_connection="MastodonClass"
+        ),
     ]
     assert mastodon.min_id == "11223344"
 
@@ -114,19 +118,12 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     posted_visibilities: list[Optional[str]] = []
     posted_media_ids: list[Optional[list[MediaAttachment]]] = []
 
-    def status_post_mockup(
-        _,
-        message: str,
-        language: Optional[str] = None,
-        spoiler_text: Optional[str] = None,
-        visibility: Optional[str] = None,
-        media_ids: Optional[list[MediaAttachment]] = None,
-    ) -> dict[str, Any]:
+    def status_post_mockup(_, message: str, *_args, **kwargs) -> dict[str, Any]:
         posted_messages.append(message)
-        posted_languages.append(language)
-        posted_labels.append(spoiler_text)
-        posted_visibilities.append(visibility)
-        posted_media_ids.append(media_ids)
+        posted_languages.append(kwargs.get("language"))
+        posted_labels.append(kwargs.get("spoiler_text"))
+        posted_visibilities.append(kwargs.get("visibility"))
+        posted_media_ids.append(kwargs.get("media_ids"))
 
         return {"id": "12121212" if message == "test message 3" else "23232323"}
 
@@ -136,14 +133,29 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     mastodon.write(
         [
-            Message(id="ForeignId1", message="test message 3"),
-            Message(id="ForeignId2", message="test message 4"),
-            Message(id="ForeignId3", message="test message 8", language="en"),
-            Message(id="ForeignId4", message="test message 7", label="test label"),
+            Message(
+                id="ForeignId1", message="test message 3", source_connection="test"
+            ),
+            Message(
+                id="ForeignId2", message="test message 4", source_connection="test"
+            ),
+            Message(
+                id="ForeignId3",
+                message="test message 8",
+                language="en",
+                source_connection="test",
+            ),
+            Message(
+                id="ForeignId4",
+                message="test message 7",
+                label="test label",
+                source_connection="test",
+            ),
             Message(
                 id="ForeignId5",
                 message="test message 5",
                 visibility=MessageVisibility.UNLISTED,
+                source_connection="test",
             ),
         ]
     )
@@ -213,7 +225,13 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     messages = mastodon.read()
 
-    assert messages == [Message(id="44554455", message="test message 5 test message 6")]
+    assert messages == [
+        Message(
+            id="44554455",
+            message="test message 5 test message 6",
+            source_connection="MastodonClass",
+        )
+    ]
     assert mastodon.min_id == "12121212"
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
 
@@ -254,9 +272,27 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         ],
     )
     assert mastodon.read() == [
-        Message(id="52121212", message="test message 3", language="en", label=None),
-        Message(id="73232323", message="test message 4", language="es", label=None),
-        Message(id="93232323", message="test message 4", language=None, label=None),
+        Message(
+            id="52121212",
+            message="test message 3",
+            language="en",
+            label=None,
+            source_connection="MastodonClass",
+        ),
+        Message(
+            id="73232323",
+            message="test message 4",
+            language="es",
+            label=None,
+            source_connection="MastodonClass",
+        ),
+        Message(
+            id="93232323",
+            message="test message 4",
+            language=None,
+            label=None,
+            source_connection="MastodonClass",
+        ),
     ]
 
     # Parses label successfully
@@ -287,9 +323,19 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     assert mastodon.read() == [
         Message(
-            id="52121212", message="test message 3", language=None, label="test label"
+            id="52121212",
+            message="test message 3",
+            language=None,
+            label="test label",
+            source_connection="MastodonClass",
         ),
-        Message(id="73232323", message="test message 4", language=None, label=None),
+        Message(
+            id="73232323",
+            message="test message 4",
+            language=None,
+            label=None,
+            source_connection="MastodonClass",
+        ),
     ]
 
     # Parses visibility successfully
@@ -336,6 +382,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             language=None,
             label=None,
             visibility=MessageVisibility.PRIVATE,
+            source_connection="MastodonClass",
         ),
         Message(
             id="73232323",
@@ -343,6 +390,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             language=None,
             label=None,
             visibility=MessageVisibility.UNLISTED,
+            source_connection="MastodonClass",
         ),
         Message(
             id="73232323",
@@ -350,6 +398,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             language=None,
             label=None,
             visibility=MessageVisibility.DIRECT,
+            source_connection="MastodonClass",
         ),
     ]
 
@@ -406,8 +455,12 @@ def test_mastodon_handles_retries(monkeypatch: pytest.MonkeyPatch) -> None:
 
     mastodon.write(
         [
-            Message(id="ForeignId1", message="test message 3"),
-            Message(id="ForeignId2", message="test message 4"),
+            Message(
+                id="ForeignId1", message="test message 3", source_connection="test"
+            ),
+            Message(
+                id="ForeignId2", message="test message 4", source_connection="test"
+            ),
         ]
     )
     assert posted_messages == ["test message 3", "test message 4"]
@@ -458,8 +511,12 @@ def test_mastodon_handles_retries_failure(monkeypatch: pytest.MonkeyPatch) -> No
     with pytest.raises(MastodonNetworkError, match="Test exception"):
         mastodon.write(
             [
-                Message(id="ForeignId1", message="test message 3"),
-                Message(id="ForeignId2", message="test message 4"),
+                Message(
+                    id="ForeignId1", message="test message 3", source_connection="test"
+                ),
+                Message(
+                    id="ForeignId2", message="test message 4", source_connection="test"
+                ),
             ]
         )
 

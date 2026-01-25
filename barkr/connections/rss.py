@@ -116,6 +116,7 @@ class RSSConnection(Connection):
             message = Message(
                 id=entry.link,
                 message=self.feed_message_callback(entry.link, entry.title),
+                source_connection=self.name,
             )
             messages.append(message)
 

@@ -101,8 +101,8 @@ def test_twitter_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     twitter.write(
         [
-            Message(id="1", message="test message 1"),
-            Message(id="2", message="test message 2"),
+            Message(id="1", message="test message 1", source_connection="test"),
+            Message(id="2", message="test message 2", source_connection="test"),
         ]
     )
 
@@ -112,8 +112,8 @@ def test_twitter_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     # If a message is too long, it should be skipped
     twitter.write(
         [
-            Message(id="3", message="a" * 300),
-            Message(id="4", message="test message 4"),
+            Message(id="3", message="a" * 300, source_connection="test"),
+            Message(id="4", message="test message 4", source_connection="test"),
         ]
     )
     assert mock_client.posted_statuses == [

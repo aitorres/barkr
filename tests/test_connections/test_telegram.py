@@ -59,8 +59,8 @@ def test_telegram_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("asyncio.run", mock_send_message)
 
     assert message_count == 0
-    telegram.write([Message("test_id", "test message")])
+    telegram.write([Message("test_id", "test message", source_connection="test")])
     assert message_count == 1
 
-    telegram.write([Message("test_id", "test message")])
+    telegram.write([Message("test_id", "test message", source_connection="test")])
     assert message_count == 2
