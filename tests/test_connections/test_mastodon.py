@@ -698,3 +698,49 @@ def test_get_media_list_from_status(monkeypatch: pytest.MonkeyPatch) -> None:
     assert media_list[0].mime_type == "image/png"
     assert media_list[0].content == b"test content"
     assert media_list[0].alt_text == "text"
+
+
+def test_mastodon_skips_reply_when_parent_not_crossposted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Test that a reply message is skipped when the parent wasn't crossposted.
+    """
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_verify_credentials",
+        lambda _: {"id": "1234567890"},
+    )
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.account_statuses",
+        lambda *_args, **_kwargs: [],
+    )
+
+    mastodon = MastodonConnection(
+        "MastodonTest",
+        [ConnectionMode.WRITE],
+        "test_token",
+        "https://example.com",
+    )
+
+    posted_messages: list[str] = []
+
+    def status_post_mockup(_, message: str, *_args, **_kwargs) -> dict[str, Any]:
+        posted_messages.append(message)
+        return {"id": "posted_id"}
+
+    monkeypatch.setattr(
+        "barkr.connections.mastodon.Mastodon.status_post", status_post_mockup
+    )
+
+    mastodon.write(
+        [
+            Message(
+                id="reply1",
+                message="This is a reply",
+                source_connection="other_connection",
+                reply_to_id="parent_id_not_crossposted",
+            ),
+        ]
+    )
+
+    assert not posted_messages

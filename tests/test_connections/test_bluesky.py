@@ -275,6 +275,40 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert messages[0].message == "I'm still here, world!"
     assert messages[0].metadata.language == "en"
 
+    bluesky.min_id = None
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_args, **_kwargs: MockFeed(
+            [
+                MockPost(
+                    MockPostData(
+                        "2001-10-31T02:30:00.000-05:00",
+                        MockRecord(
+                            "This is a quote post!",
+                            embed=AppBskyEmbedRecord.Main(
+                                record=ComAtprotoRepoStrongRef.Main(
+                                    uri="at://did:plc:test/app.bsky.feed.post/quoted",
+                                    cid="bafyreirecordcid",
+                                )
+                            ),
+                        ),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2f",
+                    )
+                ),
+                MockPost(
+                    MockPostData(
+                        "2001-10-31T01:30:00.000-05:00",
+                        MockRecord("Regular post here!"),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2e",
+                    )
+                ),
+            ]
+        ),
+    )
+    messages = bluesky.read()
+    assert len(messages) == 1
+    assert messages[0].message == "Regular post here!"
+
 
 def test_bluesky_reconstructs_embeds_successfully(
     monkeypatch: pytest.MonkeyPatch,
