@@ -127,4 +127,5 @@ class RSSConnection(Connection):
         logger.info(
             "Fetched %d messages from RSS (%s) connection", len(messages), self.name
         )
+        messages.reverse()
         return messages

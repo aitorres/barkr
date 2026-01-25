@@ -126,7 +126,10 @@ class Connection:
     def _fetch(self) -> list[Message]:
         """
         Fetch messages from this connection and returns a list of pairs
-        containing (id, message)
+        containing (id, message).
+
+        Messages must be ordered in chronological order, i.e. from oldest
+        to newest.
 
         :return: A list of pairs containing (id, message)
         """

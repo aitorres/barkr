@@ -188,6 +188,7 @@ class BlueskyConnection(ThreadAwareConnection):
         else:
             logger.info("Bluesky (%s) has no new messages.", self.name)
 
+        messages.reverse()
         return messages
 
     def _post(self, messages: list[Message]) -> list[str]:

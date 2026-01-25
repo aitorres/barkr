@@ -106,7 +106,7 @@ class MastodonConnection(ThreadAwareConnection):
         else:
             logger.info("No new statuses fetched from Mastodon (%s)", self.name)
 
-        return [
+        messages = [
             Message(
                 id=status["id"],
                 message=BeautifulSoup(status["content"], "lxml").text,
@@ -123,6 +123,9 @@ class MastodonConnection(ThreadAwareConnection):
             for status in statuses
             if status["in_reply_to_id"] is None and status["reblog"] is None
         ]
+
+        messages.reverse()
+        return messages
 
     def _post(self, messages: list[Message]) -> list[str]:
         """

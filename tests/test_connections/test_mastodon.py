@@ -78,8 +78,8 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [
             {
-                "id": "11223344",
-                "content": "test message 1",
+                "id": "55667788",
+                "content": "test message 2",
                 "reblog": None,
                 "media_attachments": [],
                 "in_reply_to_id": None,
@@ -88,8 +88,8 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "spoiler_text": "",
             },
             {
-                "id": "55667788",
-                "content": "test message 2",
+                "id": "11223344",
+                "content": "test message 1",
                 "reblog": None,
                 "media_attachments": [],
                 "in_reply_to_id": None,
@@ -110,7 +110,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             id="55667788", message="test message 2", source_connection="MastodonClass"
         ),
     ]
-    assert mastodon.min_id == "11223344"
+    assert mastodon.min_id == "55667788"
 
     posted_messages: list[str] = []
     posted_languages: list[Optional[str]] = []
@@ -182,8 +182,17 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [
             {
-                "id": "12121212",
-                "content": "test message 3",
+                "id": "44554458",
+                "content": "<p>test message 7</p> <p>test message 8</p>",
+                "reblog": None,
+                "media_attachments": [],
+                "in_reply_to_id": "13245678945613",
+                "language": None,
+                "spoiler_text": "",
+            },
+            {
+                "id": "44554455",
+                "content": "<p>test message 5</p> <p>test message 6</p>",
                 "reblog": None,
                 "media_attachments": [],
                 "in_reply_to_id": None,
@@ -202,21 +211,12 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "spoiler_text": "",
             },
             {
-                "id": "44554455",
-                "content": "<p>test message 5</p> <p>test message 6</p>",
+                "id": "12121212",
+                "content": "test message 3",
                 "reblog": None,
                 "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
-                "language": None,
-                "spoiler_text": "",
-            },
-            {
-                "id": "44554458",
-                "content": "<p>test message 7</p> <p>test message 8</p>",
-                "reblog": None,
-                "media_attachments": [],
-                "in_reply_to_id": "13245678945613",
                 "language": None,
                 "spoiler_text": "",
             },
@@ -232,7 +232,7 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             source_connection="MastodonClass",
         )
     ]
-    assert mastodon.min_id == "12121212"
+    assert mastodon.min_id == "44554458"
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
 
     # Parses language successfully
@@ -240,13 +240,13 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [
             {
-                "id": "52121212",
-                "content": "test message 3",
+                "id": "93232323",
+                "content": "test message 4",
                 "reblog": None,
                 "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
-                "language": "en",
+                "language": None,
                 "spoiler_text": "",
             },
             {
@@ -260,13 +260,13 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "spoiler_text": "",
             },
             {
-                "id": "93232323",
-                "content": "test message 4",
+                "id": "52121212",
+                "content": "test message 3",
                 "reblog": None,
                 "media_attachments": [],
                 "in_reply_to_id": None,
                 "visibility": "public",
-                "language": None,
+                "language": "en",
                 "spoiler_text": "",
             },
         ],
@@ -296,16 +296,6 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [
             {
-                "id": "52121212",
-                "content": "test message 3",
-                "reblog": None,
-                "media_attachments": [],
-                "in_reply_to_id": None,
-                "visibility": "public",
-                "language": None,
-                "spoiler_text": "test label",
-            },
-            {
                 "id": "73232323",
                 "content": "test message 4",
                 "reblog": None,
@@ -314,6 +304,16 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "visibility": "public",
                 "language": None,
                 "spoiler_text": "",
+            },
+            {
+                "id": "52121212",
+                "content": "test message 3",
+                "reblog": None,
+                "media_attachments": [],
+                "in_reply_to_id": None,
+                "visibility": "public",
+                "language": None,
+                "spoiler_text": "test label",
             },
         ],
     )
@@ -337,12 +337,12 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "barkr.connections.mastodon.Mastodon.account_statuses",
         lambda *_args, **_kwargs: [
             {
-                "id": "52121212",
-                "content": "test message 3",
+                "id": "73232323",
+                "content": "test message 4",
                 "reblog": None,
                 "media_attachments": [],
                 "in_reply_to_id": None,
-                "visibility": "private",
+                "visibility": "direct",
                 "language": None,
                 "spoiler_text": "",
             },
@@ -357,12 +357,12 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                 "spoiler_text": "",
             },
             {
-                "id": "73232323",
-                "content": "test message 4",
+                "id": "52121212",
+                "content": "test message 3",
                 "reblog": None,
                 "media_attachments": [],
                 "in_reply_to_id": None,
-                "visibility": "direct",
+                "visibility": "private",
                 "language": None,
                 "spoiler_text": "",
             },
