@@ -5,7 +5,7 @@ and related code.
 
 import pytest
 
-from barkr.connections import Connection, ConnectionMode
+from barkr.connections import Connection, ConnectionMode, ThreadAwareConnection
 from barkr.models import Media, Message, MessageType
 
 
@@ -366,3 +366,31 @@ def test_connection_does_not_write_empty_message(
     connection.write(media_list)
     assert posted_message_ids == ["2", "3", "4", "5", "6", "7", "10", "11"]
     assert connection.posted_message_ids == {"2", "3", "4", "5", "6", "7", "10", "11"}
+
+
+def test_thread_aware_connection_message_mapping() -> None:
+    """
+    Tests that the ThreadAwareConnection class correctly stores
+    and resolves message ID mappings for thread tracking across
+    connections.
+    """
+
+    connection_a = ThreadAwareConnection(
+        "Connection A", [ConnectionMode.READ, ConnectionMode.WRITE]
+    )
+    connection_b = ThreadAwareConnection(
+        "Connection B", [ConnectionMode.READ, ConnectionMode.WRITE]
+    )
+
+    connection_a.store_message_mapping("bluesky", "post123", "MA1")
+
+    connection_b.store_message_mapping("bluesky", "post123", "MB1")
+
+    resolved_a = connection_a.resolve_reply_to_id("bluesky", "post123")
+    assert resolved_a == "MA1"
+
+    resolved_b = connection_b.resolve_reply_to_id("bluesky", "post123")
+    assert resolved_b == "MB1"
+
+    resolved_none = connection_a.resolve_reply_to_id("twitter", "nonexistent")
+    assert resolved_none is None

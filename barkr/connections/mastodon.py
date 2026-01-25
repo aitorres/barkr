@@ -138,7 +138,7 @@ class MastodonConnection(ThreadAwareConnection):
             in_reply_to_id: Optional[str] = None
 
             if message.reply_to_id is not None:
-                in_reply_to_id = self._resolve_reply_to_id(
+                in_reply_to_id = self.resolve_reply_to_id(
                     message.source_connection, message.reply_to_id
                 )
 
@@ -193,7 +193,7 @@ class MastodonConnection(ThreadAwareConnection):
             )
 
             if message.source_id is not None:
-                self._store_message_mapping(
+                self.store_message_mapping(
                     message.source_connection, message.source_id, posted_message_id
                 )
 

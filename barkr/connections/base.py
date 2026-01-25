@@ -159,7 +159,7 @@ class ThreadAwareConnection(Connection):
     message_id_map: dict[tuple[str, str], dict[str, str]] = {}
     message_id_map_lock: Lock = Lock()
 
-    def _store_message_mapping(
+    def store_message_mapping(
         self, source_connection: str, source_id: str, dest_id: str
     ) -> None:
         """
@@ -186,7 +186,7 @@ class ThreadAwareConnection(Connection):
                 dest_id,
             )
 
-    def _resolve_reply_to_id(
+    def resolve_reply_to_id(
         self, source_connection: str, source_id: str
     ) -> Optional[str]:
         """
