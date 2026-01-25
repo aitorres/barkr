@@ -7,6 +7,7 @@ from typing import Any, Optional
 import pytest
 from mastodon import MastodonNetworkError
 from mastodon.return_types import MediaAttachment
+from requests.exceptions import RequestException
 
 from barkr.connections import ConnectionMode, MastodonConnection
 from barkr.connections.mastodon import (
@@ -668,7 +669,7 @@ def test_get_media_list_from_status(monkeypatch: pytest.MonkeyPatch) -> None:
     # Case: there's an exception for one of the media
     def mock_get(*_args, **_kwargs) -> Any:
         if _args[0] == "https://example.com/media/1234567890.jpg":
-            raise MastodonNetworkError("Test exception")
+            raise RequestException("Test exception")
 
         return type(
             "Response", (object,), {"content": b"test content", "status_code": 200}

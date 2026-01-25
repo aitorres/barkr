@@ -287,6 +287,10 @@ class BlueskyConnection(ThreadAwareConnection):
             self.min_id = created_uri
             posted_message_ids.append(created_uri)
 
+            self.store_message_mapping(
+                message.source_connection, message.id, created_uri
+            )
+
         return posted_message_ids
 
     def _retry_post_message(

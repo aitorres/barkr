@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from mastodon import Mastodon
 from mastodon.errors import MastodonNetworkError
 from mastodon.return_types import MediaAttachment, Status
+from requests.exceptions import RequestException
 
 from barkr.connections.base import ConnectionMode, ThreadAwareConnection
 from barkr.models import Media, Message, MessageMetadata, MessageType
@@ -264,7 +265,7 @@ def _get_media_list_from_status(status: dict[str, Any]) -> list[Media]:
             response = requests.get(
                 url, timeout=REQUESTS_EMBED_GET_TIMEOUT, headers=REQUESTS_HEADERS
             )
-        except MastodonNetworkError as e:
+        except RequestException as e:
             logger.error("Failed to download media from %s: %s", url, e)
             continue
 
