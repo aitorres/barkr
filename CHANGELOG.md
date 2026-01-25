@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.11.0] - 2026-01-24
+
+aka the reply thread update!
+
+### Added
+
+- Initial support for (self-)**thread-aware connections** in Bluesky and Mastodon connections:
+  - When reading messages, if a message is a reply to another message, Barkr will record the reply-to relationship between the two messages.
+  - When posting messages, if a message is a reply to another message AND the original message was also posted by Barkr to the destination connection, Barkr will set the reply-to relationship on the posted message accordingly
+  - This allows Barkr to maintain threads when cross-posting replies between connections that support threading.
+  - Replies to messages that were not posted by Barkr, or replies to messages on connections that do not support threading, will continue to be skipped when posting.
+
+### Fixed
+
+- When fetching new posts from a connection, messages are now returned in chronological order (from oldest to newest), and they are processed in this order when posting them on other connections.
+
+### Changed
+
+- Bluesky connection: posts now use the created record URI as an ID, instead of indexation time. Created record URIs are unique and can be sorted chronologically by design.
+- Minor dependency updates.
+- Minor tweak to Github Actions pipeline.
+
 ## [0.10.10] - 2025-12-22
 
 ### Fixed
