@@ -6,11 +6,11 @@ This module uses the Tweepy library to interact with the Twitter API.
 """
 
 import logging
-from typing import Final
+from typing import Final, Optional
 
 from tweepy import Client
 
-from barkr.connections.base import Connection, ConnectionMode
+from barkr.connections.base import ConnectionMode, ThreadAwareConnection
 from barkr.models import Message
 
 logger = logging.getLogger()
@@ -19,7 +19,7 @@ logger = logging.getLogger()
 TWITTER_MAX_LENGTH: Final[int] = 280
 
 
-class TwitterConnection(Connection):
+class TwitterConnection(ThreadAwareConnection):
     """
     Custom connection class for Twitter, supporting writing tweets
     from the authenticated user via their API keys.
@@ -76,6 +76,10 @@ class TwitterConnection(Connection):
         """
         Post a list of messages as tweets from the authenticated user.
 
+        Supports posting replies/threads by using the reply_to_id field
+        on messages, which is resolved to the corresponding tweet ID
+        in this connection using the shared message ID map.
+
         :param messages: A list of messages to post as tweets
         :return: A list of message IDs
         """
@@ -91,9 +95,31 @@ class TwitterConnection(Connection):
                 )
                 continue
 
-            posted_tweet_response = self.client.create_tweet(text=message.message)
+            in_reply_to_tweet_id: Optional[str] = None
+            if message.reply_to_id is not None:
+                in_reply_to_tweet_id = self.resolve_reply_to_id(
+                    message.source_connection, message.reply_to_id
+                )
+
+                if in_reply_to_tweet_id is None:
+                    logger.info(
+                        "Skipping reply tweet (parent not crossposted): %s -> %s/%s",
+                        message.message[:50],
+                        message.source_connection,
+                        message.reply_to_id,
+                    )
+                    continue
+
+            posted_tweet_response = self.client.create_tweet(
+                text=message.message,
+                in_reply_to_tweet_id=in_reply_to_tweet_id,
+            )
             posted_tweet_id = posted_tweet_response.data["id"]
             posted_message_ids.append(posted_tweet_id)
             logger.info("Tweeted message: %s", message.message)
+
+            self.store_message_mapping(
+                message.source_connection, message.id, posted_tweet_id
+            )
 
         return posted_message_ids
