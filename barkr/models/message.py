@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from barkr.models.media import Media
-from barkr.models.message_allowed_replies import MessageAllowedReplies
+from barkr.models.message_metadata import MessageMetadata
 from barkr.models.message_type import MessageType
 from barkr.models.message_visibility import MessageVisibility
 
@@ -34,10 +34,7 @@ class Message:
     media: list[Media] = field(default_factory=list)
 
     # Optional metadata
-    language: Optional[str] = None
-    label: Optional[str] = None
-    visibility: MessageVisibility = MessageVisibility.PUBLIC
-    allowed_replies: Optional[list[MessageAllowedReplies]] = None
+    metadata: MessageMetadata = field(default_factory=MessageMetadata)
 
     # Reply tracking - these refer to the source connection's message IDs
     source_id: Optional[str] = None
@@ -59,7 +56,10 @@ class Message:
         """
 
         # If the message is private or direct, we don't want to post it
-        if self.visibility in (MessageVisibility.PRIVATE, MessageVisibility.DIRECT):
+        if self.metadata.visibility in (
+            MessageVisibility.PRIVATE,
+            MessageVisibility.DIRECT,
+        ):
             return False
 
         has_text = bool(self.message.strip())

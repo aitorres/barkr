@@ -15,7 +15,7 @@ from mastodon.errors import MastodonNetworkError
 from mastodon.return_types import MediaAttachment, Status
 
 from barkr.connections.base import ConnectionMode, ThreadAwareConnection
-from barkr.models import Media, Message, MessageType
+from barkr.models import Media, Message, MessageMetadata, MessageType
 from barkr.models.message import MessageVisibility
 from barkr.utils import REQUESTS_EMBED_GET_TIMEOUT, REQUESTS_HEADERS
 
@@ -111,10 +111,12 @@ class MastodonConnection(ThreadAwareConnection):
                 id=status["id"],
                 message=BeautifulSoup(status["content"], "lxml").text,
                 source_connection=self.name,
-                language=status["language"],
-                label=status["spoiler_text"] or None,
-                visibility=MessageVisibility.from_mastodon_visibility(
-                    status["visibility"]
+                metadata=MessageMetadata(
+                    language=status["language"],
+                    label=status["spoiler_text"] or None,
+                    visibility=MessageVisibility.from_mastodon_visibility(
+                        status["visibility"]
+                    ),
                 ),
                 media=_get_media_list_from_status(status),
             )
@@ -157,9 +159,9 @@ class MastodonConnection(ThreadAwareConnection):
                 try:
                     posted_message = self.service.status_post(
                         message.message,
-                        language=message.language,
-                        spoiler_text=message.label or "",
-                        visibility=message.visibility.to_mastodon_visibility(),
+                        language=message.metadata.language,
+                        spoiler_text=message.metadata.label or "",
+                        visibility=message.metadata.visibility.to_mastodon_visibility(),
                         media_ids=media_list,
                         in_reply_to_id=in_reply_to_id,
                     )

@@ -38,7 +38,13 @@ from httpx import Timeout
 from PIL import Image
 
 from barkr.connections.base import ConnectionMode, ThreadAwareConnection
-from barkr.models import Media, Message, MessageAllowedReplies, MessageType
+from barkr.models import (
+    Media,
+    Message,
+    MessageAllowedReplies,
+    MessageMetadata,
+    MessageType,
+)
 from barkr.utils import (
     REQUESTS_EMBED_GET_TIMEOUT,
     REQUESTS_HEADERS,
@@ -176,7 +182,7 @@ class BlueskyConnection(ThreadAwareConnection):
                             id=post.indexed_at,
                             message=text,
                             source_connection=self.name,
-                            language=language,
+                            metadata=MessageMetadata(language=language),
                             media=media_list,
                             source_id=post.uri,
                             reply_to_id=reply_to_id,
@@ -213,7 +219,9 @@ class BlueskyConnection(ThreadAwareConnection):
                 continue
 
             embed, facets = self._generate_post_embed_and_facets(message.message)
-            language = [message.language] if message.language else None
+            language = (
+                [message.metadata.language] if message.metadata.language else None
+            )
             try:
                 created_record: CreateRecordResponse = self.service.send_post(
                     text=message.message,
@@ -267,10 +275,10 @@ class BlueskyConnection(ThreadAwareConnection):
 
             # If the message has reply restrictions, we create a thread gate record
             # for them
-            if message.allowed_replies:
+            if message.metadata.allowed_replies:
                 thread_gate_record = MessageAllowedReplies.to_bluesky_threadgate(
                     created_uri,
-                    message.allowed_replies,
+                    message.metadata.allowed_replies,
                     self.service.get_current_time_iso(),
                 )
 

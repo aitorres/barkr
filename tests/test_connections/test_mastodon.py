@@ -13,7 +13,7 @@ from barkr.connections.mastodon import (
     _get_media_list_from_status,
     _post_media_list_to_mastodon,
 )
-from barkr.models import Media, Message
+from barkr.models import Media, Message, MessageMetadata
 from barkr.models.message import MessageVisibility
 
 
@@ -142,19 +142,19 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             Message(
                 id="ForeignId3",
                 message="test message 8",
-                language="en",
+                metadata=MessageMetadata(language="en"),
                 source_connection="test",
             ),
             Message(
                 id="ForeignId4",
                 message="test message 7",
-                label="test label",
+                metadata=MessageMetadata(label="test label"),
                 source_connection="test",
             ),
             Message(
                 id="ForeignId5",
                 message="test message 5",
-                visibility=MessageVisibility.UNLISTED,
+                metadata=MessageMetadata(visibility=MessageVisibility.UNLISTED),
                 source_connection="test",
             ),
         ]
@@ -275,22 +275,18 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         Message(
             id="52121212",
             message="test message 3",
-            language="en",
-            label=None,
+            metadata=MessageMetadata(language="en"),
             source_connection="MastodonClass",
         ),
         Message(
             id="73232323",
             message="test message 4",
-            language="es",
-            label=None,
+            metadata=MessageMetadata(language="es"),
             source_connection="MastodonClass",
         ),
         Message(
             id="93232323",
             message="test message 4",
-            language=None,
-            label=None,
             source_connection="MastodonClass",
         ),
     ]
@@ -325,15 +321,12 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         Message(
             id="52121212",
             message="test message 3",
-            language=None,
-            label="test label",
+            metadata=MessageMetadata(label="test label"),
             source_connection="MastodonClass",
         ),
         Message(
             id="73232323",
             message="test message 4",
-            language=None,
-            label=None,
             source_connection="MastodonClass",
         ),
     ]
@@ -379,25 +372,19 @@ def test_mastodon_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         Message(
             id="52121212",
             message="test message 3",
-            language=None,
-            label=None,
-            visibility=MessageVisibility.PRIVATE,
+            metadata=MessageMetadata(visibility=MessageVisibility.PRIVATE),
             source_connection="MastodonClass",
         ),
         Message(
             id="73232323",
             message="test message 4",
-            language=None,
-            label=None,
-            visibility=MessageVisibility.UNLISTED,
+            metadata=MessageMetadata(visibility=MessageVisibility.UNLISTED),
             source_connection="MastodonClass",
         ),
         Message(
             id="73232323",
             message="test message 4",
-            language=None,
-            label=None,
-            visibility=MessageVisibility.DIRECT,
+            metadata=MessageMetadata(visibility=MessageVisibility.DIRECT),
             source_connection="MastodonClass",
         ),
     ]

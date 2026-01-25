@@ -5,6 +5,7 @@ Module to implement unit tests for the Message class.
 from barkr.models.media import Media
 from barkr.models.message import Message
 from barkr.models.message_allowed_replies import MessageAllowedReplies
+from barkr.models.message_metadata import MessageMetadata
 from barkr.models.message_type import MessageType
 from barkr.models.message_visibility import MessageVisibility
 
@@ -17,17 +18,16 @@ def test_message() -> None:
     message_1 = Message(
         id="12345",
         message="Hello, world!",
-        language="en",
-        label="greeting",
+        metadata=MessageMetadata(language="en", label="greeting"),
         source_connection="test",
     )
 
     assert message_1.id == "12345"
     assert message_1.message == "Hello, world!"
-    assert message_1.language == "en"
-    assert message_1.label == "greeting"
-    assert message_1.visibility == MessageVisibility.PUBLIC
-    assert message_1.allowed_replies is None
+    assert message_1.metadata.language == "en"
+    assert message_1.metadata.label == "greeting"
+    assert message_1.metadata.visibility == MessageVisibility.PUBLIC
+    assert message_1.metadata.allowed_replies is None
     assert message_1.source_connection == "test"
     assert message_1.source_id is None
     assert message_1.reply_to_id is None
@@ -39,10 +39,10 @@ def test_message() -> None:
     )
     assert message_2.id == "67890"
     assert message_2.message == "Bonjour le monde!"
-    assert message_2.language is None
-    assert message_2.label is None
-    assert message_2.visibility == MessageVisibility.PUBLIC
-    assert message_2.allowed_replies is None
+    assert message_2.metadata.language is None
+    assert message_2.metadata.label is None
+    assert message_2.metadata.visibility == MessageVisibility.PUBLIC
+    assert message_2.metadata.allowed_replies is None
     assert message_2.source_connection == "test"
     assert message_2.source_id is None
     assert message_2.reply_to_id is None
@@ -50,16 +50,18 @@ def test_message() -> None:
     message_3 = Message(
         id="abcde",
         message="Hola, mundo!",
-        visibility=MessageVisibility.PRIVATE,
-        allowed_replies=[MessageAllowedReplies.FOLLOWERS],
+        metadata=MessageMetadata(
+            visibility=MessageVisibility.PRIVATE,
+            allowed_replies=[MessageAllowedReplies.FOLLOWERS],
+        ),
         source_connection="test",
     )
     assert message_3.id == "abcde"
     assert message_3.message == "Hola, mundo!"
-    assert message_3.language is None
-    assert message_3.label is None
-    assert message_3.visibility == MessageVisibility.PRIVATE
-    assert message_3.allowed_replies == [MessageAllowedReplies.FOLLOWERS]
+    assert message_3.metadata.language is None
+    assert message_3.metadata.label is None
+    assert message_3.metadata.visibility == MessageVisibility.PRIVATE
+    assert message_3.metadata.allowed_replies == [MessageAllowedReplies.FOLLOWERS]
     assert message_3.source_connection == "test"
     assert message_3.source_id is None
     assert message_3.reply_to_id is None
@@ -85,7 +87,10 @@ def test_message_has_content() -> None:
         MessageType.TEXT_ONLY
     )
     assert Message(
-        id="12345", message="Hello, world!", label="greeting", source_connection="test"
+        id="12345",
+        message="Hello, world!",
+        metadata=MessageMetadata(label="greeting"),
+        source_connection="test",
     ).has_content(MessageType.TEXT_ONLY)
 
     # Check for a message with a media object
@@ -142,13 +147,13 @@ def test_message_has_content() -> None:
     assert not Message(
         id="12345",
         message="Hello, world!",
-        visibility=MessageVisibility.PRIVATE,
+        metadata=MessageMetadata(visibility=MessageVisibility.PRIVATE),
         source_connection="test",
     ).has_content(MessageType.TEXT_ONLY)
     assert not Message(
         id="12345",
         message="Hello, world!",
-        visibility=MessageVisibility.DIRECT,
+        metadata=MessageMetadata(visibility=MessageVisibility.DIRECT),
         source_connection="test",
     ).has_content(MessageType.TEXT_ONLY)
 
@@ -156,6 +161,6 @@ def test_message_has_content() -> None:
     assert not Message(
         id="12345",
         message="",
-        visibility=MessageVisibility.PRIVATE,
+        metadata=MessageMetadata(visibility=MessageVisibility.PRIVATE),
         source_connection="test",
     ).has_content(MessageType.TEXT_ONLY)
