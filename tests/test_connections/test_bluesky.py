@@ -4,7 +4,6 @@ Module to implement unit tests for the Bluesky connection class
 
 import io
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Optional
 
 import pytest
@@ -24,9 +23,6 @@ from requests.exceptions import RequestException
 
 from barkr.connections import BlueskyConnection, ConnectionMode
 from barkr.connections.bluesky import (
-    BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY,
-    BLUESKY_EXPONENTIAL_BACKOFF_RETRIES,
-    _get_current_indexed_at,
     _get_meta_tag_from_html_metadata,
     _is_quote_embed,
 )
@@ -128,20 +124,6 @@ class MockFeed:
     feed: list[MockPost]
 
 
-@dataclass(frozen=True)
-class MockPostDetails:
-    """Minimal post details returned by get_posts."""
-
-    indexed_at: str
-
-
-@dataclass(frozen=True)
-class MockGetPostsResponse:
-    """Response wrapper for Client.get_posts."""
-
-    posts: list[MockPostDetails]
-
-
 def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     """Basic end-to-end reads and filtering behavior."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
@@ -161,12 +143,16 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             [
                 MockPost(
                     MockPostData(
-                        "2000-10-31T01:30:00.000-05:00", MockRecord("Hello, world!")
+                        "2000-10-31T01:30:00.000-05:00",
+                        MockRecord("Hello, world!"),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2b",
                     )
                 ),
                 MockPost(
                     MockPostData(
-                        "2000-10-29T01:30:00.000-05:00", MockRecord("Goodbye, world!")
+                        "2000-10-29T01:30:00.000-05:00",
+                        MockRecord("Goodbye, world!"),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2a",
                     )
                 ),
             ]
@@ -179,7 +165,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         "test_handle",
         "test_password",
     )
-    assert bluesky.min_id == datetime.fromisoformat("2000-10-31T01:30:00.000-05:00")
+    assert bluesky.min_id == "at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2b"
 
     monkeypatch.setattr(
         "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
@@ -195,12 +181,16 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
             [
                 MockPost(
                     MockPostData(
-                        "2000-10-31T02:30:00.000-05:00", MockRecord("Hello, world 2!")
+                        "2000-10-31T02:30:00.000-05:00",
+                        MockRecord("Hello, world 2!"),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2c",
                     )
                 ),
                 MockPost(
                     MockPostData(
-                        "2000-10-31T01:30:00.000-05:00", MockRecord("Goodbye, world!")
+                        "2000-10-31T01:30:00.000-05:00",
+                        MockRecord("Goodbye, world!"),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2b",
                     )
                 ),
             ]
@@ -209,6 +199,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     messages = bluesky.read()
     assert len(messages) == 1
     assert messages[0].message == "Hello, world 2!"
+    assert messages[0].id == "at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2c"
     assert messages[0].metadata.language is None
 
     # Reading again, no new messages since we increased the min_id
@@ -230,6 +221,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                                 )
                             ),
                         ),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2d",
                     )
                 ),
             ]
@@ -256,6 +248,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                                 )
                             ),
                         ),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2e",
                         viewer=MockViewer(repost="12345678"),
                     )
                 ),
@@ -263,6 +256,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                     MockPostData(
                         "2001-10-31T01:30:00.000-05:00",
                         MockRecord("Goodbye, world!"),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2d",
                         viewer=MockViewer(repost="12345678"),
                     )
                 ),
@@ -270,6 +264,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
                     MockPostData(
                         "2001-10-31T01:30:00.000-05:00",
                         MockRecord("I'm still here, world!", langs=["en"]),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2c",
                     )
                 ),
             ]
@@ -328,6 +323,7 @@ def test_bluesky_reconstructs_embeds_successfully(
                                 )
                             ),
                         ),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2a",
                     )
                 ),
             ]
@@ -362,6 +358,7 @@ def test_bluesky_reconstructs_embeds_successfully(
                                 )
                             ),
                         ),
+                        uri="at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2b",
                     )
                 ),
             ]
@@ -373,17 +370,6 @@ def test_bluesky_reconstructs_embeds_successfully(
         "GFOTY is always refreshing, in a way "
         "https://open.spotify.com/track/3R9PjdxlGKwGzo7ai89L8r?si=b7480cdf279e4fd8"
     )
-
-
-def test_get_current_indexed_at() -> None:
-    """_get_current_indexed_at returns a near-now UTC timestamp."""
-    current_time = datetime.now(timezone.utc)
-    indexed_at = _get_current_indexed_at()
-
-    assert indexed_at.tzinfo == timezone.utc
-
-    delta = abs((indexed_at - current_time).total_seconds())
-    assert delta < 1
 
 
 def test_get_meta_tag_from_html_metadata() -> None:
@@ -834,98 +820,6 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
         connection._compress_image(valid_image_data)  # pylint: disable=protected-access
         is None
     )
-
-
-def test_get_post_indexed_at_with_retry(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Retrieve indexed_at with exponential backoff and sensible fallback."""
-    _setup_bluesky_connection_monkeypatch(monkeypatch)
-
-    connection = BlueskyConnection(
-        "TestBluesky",
-        [ConnectionMode.WRITE],
-        "test_handle",
-        "test_password",
-    )
-
-    # Test case: Success on first attempt
-    expected_indexed_at = "2025-07-26T12:00:00.000+00:00"
-    mock_get_posts_response = MockGetPostsResponse(
-        posts=[MockPostDetails(indexed_at=expected_indexed_at)]
-    )
-
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.get_posts",
-        lambda *_: mock_get_posts_response,
-    )
-
-    test_uri = "at://did:plc:test/app.bsky.feed.post/test123"
-    result = (
-        connection._get_post_indexed_at_with_retry(  # pylint: disable=protected-access
-            test_uri
-        )
-    )
-
-    assert result == datetime.fromisoformat(expected_indexed_at)
-
-    # Test case: Success after retries (IndexError on first attempts)
-    call_count = 0
-
-    def mock_get_posts_with_retries(*_):
-        nonlocal call_count
-        call_count += 1
-
-        # Fail on first attempt, succeed on second
-        if call_count < 2:
-            # This will trigger an IndexError
-            return MockGetPostsResponse(posts=[])
-
-        return mock_get_posts_response
-
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.get_posts",
-        mock_get_posts_with_retries,
-    )
-
-    # Mock time.sleep to avoid actual delays in tests
-    sleep_calls: list[int] = []
-    monkeypatch.setattr("time.sleep", sleep_calls.append)
-
-    result = (
-        connection._get_post_indexed_at_with_retry(  # pylint: disable=protected-access
-            test_uri
-        )
-    )
-
-    assert result == datetime.fromisoformat(expected_indexed_at)
-    assert len(sleep_calls) == 1  # Should have slept once before retry
-    expected_delay = BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY * (2**0)
-    assert sleep_calls[0] == expected_delay
-
-    # Test case: Failure after all retries (IndexError every time)
-    def mock_get_posts_always_fail(*_):
-        return MockGetPostsResponse(posts=[])
-
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.get_posts",
-        mock_get_posts_always_fail,
-    )
-
-    mock_current_time = datetime.now(timezone.utc)
-    monkeypatch.setattr(
-        "barkr.connections.bluesky._get_current_indexed_at",
-        lambda: mock_current_time,
-    )
-
-    sleep_calls.clear()
-    result = (
-        connection._get_post_indexed_at_with_retry(  # pylint: disable=protected-access
-            test_uri
-        )
-    )
-
-    assert result == mock_current_time
-    expected_sleep_count = BLUESKY_EXPONENTIAL_BACKOFF_RETRIES - 1
-    assert len(sleep_calls) == expected_sleep_count
 
 
 def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:

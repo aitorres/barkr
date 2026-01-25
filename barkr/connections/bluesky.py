@@ -7,7 +7,6 @@ via their handle and password.
 import io
 import logging
 import time
-from datetime import datetime, timezone
 from typing import Final, Optional, Union
 from urllib.parse import urlparse
 
@@ -77,6 +76,7 @@ class BlueskyConnection(ThreadAwareConnection):
     service: Client
     handle: str
     compress_images: bool
+    min_id: Optional[str] = None
 
     def __init__(  # pylint: disable=too-many-arguments too-many-positional-arguments
         self,
@@ -122,16 +122,13 @@ class BlueskyConnection(ThreadAwareConnection):
             self.handle,
         )
 
-        user_feed = self._get_user_feed_with_retry()
-        if user_feed:
-            # Set the initial min_id to the most recent post's indexed_at,
-            # which is a UTC timestamp string, casted to datetime
-            self.min_id: Optional[datetime] = datetime.fromisoformat(
-                user_feed[0].post.indexed_at
-            )
+        # Set the initial min_id to the most recent post's URI,
+        # which is chronologically sortable due to TID-based record keys
+        self._set_min_id_from_user_feed()
+
+        if self.min_id:
             logger.info("Bluesky (%s) initial min_id: %s", self.name, self.min_id)
         else:
-            self.min_id = None
             logger.info("Bluesky (%s) initial min_id not set.", self.name)
 
     def _fetch(self) -> list[Message]:
@@ -152,10 +149,7 @@ class BlueskyConnection(ThreadAwareConnection):
                 if post.viewer is not None and post.viewer.repost is not None:
                     continue
 
-                if (
-                    self.min_id is None
-                    or datetime.fromisoformat(post.indexed_at) > self.min_id
-                ):
+                if self.min_id is None or post.uri > self.min_id:
                     record = post.record
                     if (embed := record.embed) is not None:
                         if _is_quote_embed(embed):
@@ -179,18 +173,17 @@ class BlueskyConnection(ThreadAwareConnection):
 
                     messages.append(
                         Message(
-                            id=post.indexed_at,
+                            id=post.uri,
                             message=text,
                             source_connection=self.name,
                             metadata=MessageMetadata(language=language),
                             media=media_list,
-                            source_id=post.uri,
                             reply_to_id=reply_to_id,
                         )
                     )
 
-        if messages:
-            self.min_id = datetime.fromisoformat(messages[0].id)
+        if messages and user_feed:
+            self.min_id = user_feed[0].post.uri
             logger.info("Bluesky (%s) has %s new messages.", self.name, len(messages))
         else:
             logger.info("Bluesky (%s) has no new messages.", self.name)
@@ -235,9 +228,9 @@ class BlueskyConnection(ThreadAwareConnection):
                     "Bluesky (%s) post failed with timeout error: %s", self.name, str(e)
                 )
 
-                # In case we _did_ post the message, we don't want to
-                # re-post it again
-                self.min_id = _get_current_indexed_at()
+                # In case we _did_ post the message, update min_id from the feed
+                # to avoid re-reading our own post
+                self._set_min_id_from_user_feed()
                 continue
             except BadRequestError as e:
                 # We could be trying to create an embed that is too large,
@@ -267,12 +260,6 @@ class BlueskyConnection(ThreadAwareConnection):
 
             created_uri = created_record.uri
 
-            # NOTE: we want to retrieve the post's indexed_at timestamp
-            # so we can use it as the new `min_id`, we do this with a
-            # backoff retry mechanism since it might not be immediately
-            # indexed on the first try.
-            indexed_at = self._get_post_indexed_at_with_retry(created_uri)
-
             # If the message has reply restrictions, we create a thread gate record
             # for them
             if message.metadata.allowed_replies:
@@ -290,15 +277,14 @@ class BlueskyConnection(ThreadAwareConnection):
                     )
 
             logger.info(
-                "Posted message %s to Bluesky (%s) connection (URI: %s, Indexed At: %s)",
+                "Posted message %s to Bluesky (%s) connection (URI: %s)",
                 message.message,
                 self.name,
                 created_uri,
-                indexed_at,
             )
 
-            self.min_id = indexed_at
-            posted_message_ids.append(str(indexed_at))
+            self.min_id = created_uri
+            posted_message_ids.append(created_uri)
 
         return posted_message_ids
 
@@ -697,49 +683,20 @@ class BlueskyConnection(ThreadAwareConnection):
             logger.warning("Error compressing image: %s", e)
             return None
 
-    def _get_post_indexed_at_with_retry(self, created_uri: str) -> datetime:
+    def _set_min_id_from_user_feed(self) -> None:
         """
-        Attempts to fetch the indexed_at timestamp for a newly created post
-        with exponential backoff retry. Since a fresh post might not be immediately
-        indexed, we use a backoff retry mechanism, and return the current time
-        as a default if the post details cannot be fetched.
+        Attempts to retrieve the latest post from the user feed
+        and set the `min_id` property as that post's URI, if it exists.
 
-        :param created_uri: The URI of the created post
-        :return: The indexed_at timestamp of the post
+        If the post does not exist, the `min_id` will be set as None.
         """
 
-        for attempt in range(BLUESKY_EXPONENTIAL_BACKOFF_RETRIES):
-            try:
-                post_details = self.service.get_posts([created_uri]).posts[0]
-            except (IndexError, InvokeTimeoutError):
-                if attempt >= BLUESKY_EXPONENTIAL_BACKOFF_RETRIES - 1:
-                    break
+        user_feed = self._get_user_feed_with_retry()
 
-                delay = BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY * (2**attempt)
-                time.sleep(delay)
-                continue
-            else:
-                indexed_at = datetime.fromisoformat(post_details.indexed_at)
-
-                logger.info(
-                    "Successfully fetched post details for Bluesky (%s) "
-                    "after %d attempts",
-                    self.name,
-                    attempt + 1,
-                )
-
-                return indexed_at
-
-        indexed_at = _get_current_indexed_at()
-        logger.warning(
-            "Failed to fetch post details for Bluesky (%s) post: %s "
-            "after %d attempts, manually setting indexed_at to %s",
-            self.name,
-            created_uri,
-            BLUESKY_EXPONENTIAL_BACKOFF_RETRIES,
-            indexed_at,
-        )
-        return indexed_at
+        if user_feed:
+            self.min_id = user_feed[0].post.uri
+        else:
+            self.min_id = None
 
     def _get_user_feed_with_retry(self) -> Optional[FeedViewPost]:
         """
@@ -815,18 +772,6 @@ def _get_meta_tag_from_html_metadata(
         return tag_content
 
     return None
-
-
-def _get_current_indexed_at() -> datetime:
-    """
-    Returns the current UTC timestamp,
-    to mock the Bluesky API's indexed_at field
-    right after posting a message if the post details cannot be fetched.
-
-    :return: The current indexed_at timestamp
-    """
-
-    return datetime.now(timezone.utc)
 
 
 def _is_quote_embed(
