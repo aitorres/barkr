@@ -29,7 +29,6 @@ def test_message() -> None:
     assert message_1.metadata.visibility == MessageVisibility.PUBLIC
     assert message_1.metadata.allowed_replies is None
     assert message_1.source_connection == "test"
-    assert message_1.source_id is None
     assert message_1.reply_to_id is None
 
     message_2 = Message(
@@ -44,7 +43,6 @@ def test_message() -> None:
     assert message_2.metadata.visibility == MessageVisibility.PUBLIC
     assert message_2.metadata.allowed_replies is None
     assert message_2.source_connection == "test"
-    assert message_2.source_id is None
     assert message_2.reply_to_id is None
 
     message_3 = Message(
@@ -63,7 +61,6 @@ def test_message() -> None:
     assert message_3.metadata.visibility == MessageVisibility.PRIVATE
     assert message_3.metadata.allowed_replies == [MessageAllowedReplies.FOLLOWERS]
     assert message_3.source_connection == "test"
-    assert message_3.source_id is None
     assert message_3.reply_to_id is None
 
 

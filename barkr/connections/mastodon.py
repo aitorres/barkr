@@ -192,10 +192,9 @@ class MastodonConnection(ThreadAwareConnection):
                 "Posted status to Mastodon (%s): %s", self.name, message.message
             )
 
-            if message.source_id is not None:
-                self.store_message_mapping(
-                    message.source_connection, message.source_id, posted_message_id
-                )
+            self.store_message_mapping(
+                message.source_connection, message.id, posted_message_id
+            )
 
         return posted_message_ids
 

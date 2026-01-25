@@ -36,8 +36,7 @@ class Message:
     # Optional metadata
     metadata: MessageMetadata = field(default_factory=MessageMetadata)
 
-    # Reply tracking - these refer to the source connection's message IDs
-    source_id: Optional[str] = None
+    # Reply tracking
     reply_to_id: Optional[str] = None
 
     def has_content(self, supported_message_type: MessageType) -> bool:
