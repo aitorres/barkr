@@ -58,32 +58,28 @@ class MastodonConnection(ThreadAwareConnection):
         """
         super().__init__(name, modes)
 
-        logger.info(
-            "Initializing Mastodon (%s) connection to instance %s",
-            self.name,
-            instance_url,
-        )
         self.service = Mastodon(
             access_token=access_token,
             api_base_url=instance_url,
             request_timeout=10,
         )
         self.account_id: str = self.service.account_verify_credentials()["id"]
-        logger.info(
-            "Mastodon (%s) connection initialized! (Account ID: %s)",
-            self.name,
-            self.account_id,
-        )
 
         current_statuses = self.service.account_statuses(
             self.account_id, exclude_reblogs=True, exclude_replies=True
         )
         if current_statuses:
             self.min_id = current_statuses[0]["id"]
-            logger.info("Mastodon (%s) initial min_id: %s", self.name, self.min_id)
         else:
             self.min_id = None
-            logger.info("Mastodon (%s) initial min_id not set.", self.name)
+
+        logger.info(
+            "Mastodon (%s) initialized for instance %s, account %s (initial min_id: %s)",
+            self.name,
+            instance_url,
+            self.account_id,
+            self.min_id or "not set",
+        )
 
     def _fetch(self) -> list[Message]:
         """
@@ -102,19 +98,17 @@ class MastodonConnection(ThreadAwareConnection):
         )
 
         if statuses:
-            logger.info(
-                "Fetched %s new statuses from Mastodon (%s)", len(statuses), self.name
-            )
             old_min_id = self.min_id
             self.min_id = statuses[0]["id"]
-            logger.debug(
-                "Mastodon (%s) min_id updated: %s -> %s",
+            logger.info(
+                "Mastodon (%s) fetched %s new statuses (min_id: %s -> %s)",
                 self.name,
+                len(statuses),
                 old_min_id,
                 self.min_id,
             )
         else:
-            logger.info("No new statuses fetched from Mastodon (%s)", self.name)
+            logger.debug("Mastodon (%s) has no new statuses.", self.name)
 
         messages = [
             Message(

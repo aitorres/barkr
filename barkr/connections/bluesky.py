@@ -103,12 +103,6 @@ class BlueskyConnection(ThreadAwareConnection):
 
         super().__init__(name, modes)
 
-        logger.info(
-            "Initializing Bluesky (%s) connection for user %s",
-            self.name,
-            handle,
-        )
-
         self.service = Client(
             request=Request(timeout=Timeout(timeout=BLUESKY_REQUEST_TIMEOUT))
         )
@@ -116,20 +110,16 @@ class BlueskyConnection(ThreadAwareConnection):
         self.handle = handle
         self.compress_images = compress_images
 
-        logger.info(
-            "Bluesky (%s) connection initialized! (User handle: %s)",
-            self.name,
-            self.handle,
-        )
-
         # Set the initial min_id to the most recent post's URI,
         # which is chronologically sortable due to TID-based record keys
         self._set_min_id_from_user_feed()
 
-        if self.min_id:
-            logger.info("Bluesky (%s) initial min_id: %s", self.name, self.min_id)
-        else:
-            logger.info("Bluesky (%s) initial min_id not set.", self.name)
+        logger.info(
+            "Bluesky (%s) initialized for user %s (initial min_id: %s)",
+            self.name,
+            self.handle,
+            self.min_id or "not set",
+        )
 
     def _fetch(self) -> list[Message]:
         """
@@ -187,15 +177,15 @@ class BlueskyConnection(ThreadAwareConnection):
         if messages and user_feed:
             old_min_id = self.min_id
             self.min_id = user_feed[0].post.uri
-            logger.debug(
-                "Bluesky (%s) min_id updated: %s -> %s",
+            logger.info(
+                "Bluesky (%s) fetched %s new messages (min_id: %s -> %s)",
                 self.name,
+                len(messages),
                 old_min_id,
                 self.min_id,
             )
-            logger.info("Bluesky (%s) has %s new messages.", self.name, len(messages))
         else:
-            logger.info("Bluesky (%s) has no new messages.", self.name)
+            logger.debug("Bluesky (%s) has no new messages.", self.name)
 
         messages.reverse()
         return messages
@@ -605,22 +595,22 @@ class BlueskyConnection(ThreadAwareConnection):
 
         # Check if image needs compression
         if len(img_data) > BLUESKY_MAX_IMAGE_SIZE_BYTES:
-            logger.info(
-                "Image from %s is %d bytes, exceeds limit of %d bytes.",
-                image_url,
-                len(img_data),
-                BLUESKY_MAX_IMAGE_SIZE_BYTES,
-            )
-
             if not self.compress_images:
                 logger.warning(
-                    "Image compression is disabled for Bluesky (%s), "
-                    "skipping upload for %s",
-                    self.name,
+                    "Image from %s (%d bytes) exceeds limit (%d bytes), "
+                    "compression disabled for Bluesky (%s), skipping upload",
                     image_url,
+                    len(img_data),
+                    BLUESKY_MAX_IMAGE_SIZE_BYTES,
+                    self.name,
                 )
                 return None
 
+            logger.debug(
+                "Image from %s (%d bytes) exceeds limit, compressing",
+                image_url,
+                len(img_data),
+            )
             img_data = self._compress_image(img_data)
             if img_data is None:
                 logger.warning("Failed to compress image from %s", image_url)
@@ -652,11 +642,6 @@ class BlueskyConnection(ThreadAwareConnection):
             # If the image is already smaller than the limit,
             # no need to compress it further
             if len(img_data) <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
-                logger.info(
-                    "Image is already within size limit (%d bytes), "
-                    "no compression needed.",
-                    len(img_data),
-                )
                 return img_data
 
             # Resizing the image to fit within the size limit
