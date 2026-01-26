@@ -138,6 +138,8 @@ class BlueskyConnection(ThreadAwareConnection):
         :return: A list of messages
         """
 
+        logger.debug("Bluesky (%s) fetching with min_id: %s", self.name, self.min_id)
+
         messages: list[Message] = []
 
         user_feed = self._get_user_feed_with_retry()
@@ -183,7 +185,14 @@ class BlueskyConnection(ThreadAwareConnection):
                     )
 
         if messages and user_feed:
+            old_min_id = self.min_id
             self.min_id = user_feed[0].post.uri
+            logger.debug(
+                "Bluesky (%s) min_id updated: %s -> %s",
+                self.name,
+                old_min_id,
+                self.min_id,
+            )
             logger.info("Bluesky (%s) has %s new messages.", self.name, len(messages))
         else:
             logger.info("Bluesky (%s) has no new messages.", self.name)

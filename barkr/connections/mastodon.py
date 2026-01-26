@@ -92,6 +92,8 @@ class MastodonConnection(ThreadAwareConnection):
         :return: A list of messages
         """
 
+        logger.debug("Mastodon (%s) fetching with min_id: %s", self.name, self.min_id)
+
         statuses: list[Status] = self.service.account_statuses(
             self.account_id,
             exclude_reblogs=True,
@@ -103,7 +105,14 @@ class MastodonConnection(ThreadAwareConnection):
             logger.info(
                 "Fetched %s new statuses from Mastodon (%s)", len(statuses), self.name
             )
+            old_min_id = self.min_id
             self.min_id = statuses[0]["id"]
+            logger.debug(
+                "Mastodon (%s) min_id updated: %s -> %s",
+                self.name,
+                old_min_id,
+                self.min_id,
+            )
         else:
             logger.info("No new statuses fetched from Mastodon (%s)", self.name)
 
