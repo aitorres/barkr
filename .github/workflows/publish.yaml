@@ -20,7 +20,7 @@ jobs:
           python-version: '3.x'
           architecture: x64
       - name: Install Poetry
-        uses: snok/install-poetry@v1.3.0
+        uses: snok/install-poetry@v1.4.1
         with:
           virtualenvs-create: true
           virtualenvs-in-project: true
@@ -35,10 +35,13 @@ jobs:
           name: python-package-distributions
           path: dist/
       - name: Extract changelog content for release
-        uses: mathiasvr/command-output@v2.0.0
         id: changelog_content
-        with:
-          run: awk '/^## /{if (p) exit; p=1; next} p' CHANGELOG.md
+        run: |
+          {
+            echo 'stdout<<EOF'
+            awk '/^## /{if (p) exit; p=1; next} p' CHANGELOG.md
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
   publish:
     name: Publish to PyPI
@@ -74,13 +77,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           draft: false
           prerelease: false
           body: ${{ needs.build.outputs.changelog_content }}

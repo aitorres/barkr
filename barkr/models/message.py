@@ -66,8 +66,7 @@ class Message:
         # If we support media, we can post a message with no text
         # as long as it has media
         if supported_message_type == MessageType.TEXT_MEDIA:
-            valid_media = [m for m in self.media if m.is_valid()]
-            has_media = len(valid_media) > 0
+            has_media = any(m.is_valid() for m in self.media)
 
             # If we have media, we can post the message
             return has_text or has_media
