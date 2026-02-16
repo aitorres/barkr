@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.11.2] - 2026-02-16
+
+### Fixed
+
+- BlueskyConnection: fixed an issue where, if a user's most recent post was a repost, the updated `min_id` could be set incorrectly to the repost's URI, which could be lexicographically less than any of the user's posts, causing the connection to fetch the same posts again on the next read, and cycle through the same posts indefinitely.
+
 ## [0.11.1] - 2026-01-24
 
 ### Added
