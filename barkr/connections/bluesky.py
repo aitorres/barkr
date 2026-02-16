@@ -176,7 +176,7 @@ class BlueskyConnection(ThreadAwareConnection):
 
         if messages and user_feed:
             old_min_id = self.min_id
-            self.min_id = user_feed[0].post.uri
+            self.min_id = _get_latest_own_post_uri(user_feed) or self.min_id
             logger.info(
                 "Bluesky (%s) fetched %s new messages (min_id: %s -> %s)",
                 self.name,
@@ -693,7 +693,7 @@ class BlueskyConnection(ThreadAwareConnection):
         user_feed = self._get_user_feed_with_retry()
 
         if user_feed:
-            self.min_id = user_feed[0].post.uri
+            self.min_id = _get_latest_own_post_uri(user_feed)
         else:
             self.min_id = None
 
@@ -800,3 +800,23 @@ def _is_quote_embed(
     return isinstance(
         embed, (AppBskyEmbedRecord.Main, AppBskyEmbedRecordWithMedia.Main)
     )
+
+
+def _get_latest_own_post_uri(
+    user_feed: list[FeedViewPost],
+) -> Optional[str]:
+    """
+    Returns the URI of the most recent non-repost post in the feed,
+    or None if all items are reposts.
+
+    Only non-repost URIs are safe for min_id comparison because they
+    share the authenticated user's DID prefix, making lexicographic
+    ordering equivalent to chronological ordering.
+    """
+
+    for feed_view in user_feed:
+        post = feed_view.post
+        if post.viewer is None or post.viewer.repost is None:
+            return str(post.uri)
+
+    return None

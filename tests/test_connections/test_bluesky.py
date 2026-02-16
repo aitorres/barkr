@@ -856,6 +856,79 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+def test_bluesky_repost_as_most_recent_does_not_corrupt_min_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the most recent feed item is a repost from another user whose DID
+    sorts lexicographically before the authenticated user's DID, its id will
+    forcefully be less than any post of the authenticated user.
+    We cannot take that as the min_id for sorting the user's posts.
+    Otherwise every subsequent fetch will treat ALL of the user's own posts
+    as "new" because their URIs are always greater than the foreign DID prefix,
+    causing duplicate message pulls."""
+
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+
+    own_post_uri = "at://did:plc:zzz/app.bsky.feed.post/3jzfcijpj2z2a"
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_args, **_kwargs: MockFeed(
+            [
+                MockPost(
+                    MockPostData(
+                        "2000-10-31T01:30:00.000-05:00",
+                        MockRecord("Initial own post"),
+                        uri=own_post_uri,
+                    )
+                ),
+            ]
+        ),
+    )
+
+    bluesky = BlueskyConnection(
+        "BlueskyRepostBug",
+        [ConnectionMode.READ],
+        "test_handle",
+        "test_password",
+    )
+    assert bluesky.min_id == own_post_uri
+
+    repost_uri = "at://did:plc:aaa/app.bsky.feed.post/3jzfcijpj2z2z"
+    new_own_post_uri = "at://did:plc:zzz/app.bsky.feed.post/3jzfcijpj2z2b"
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_args, **_kwargs: MockFeed(
+            [
+                # Most recent item is a repost of someone else's post
+                MockPost(
+                    MockPostData(
+                        "2000-11-01T01:00:00.000-05:00",
+                        MockRecord("Foreign user's post"),
+                        uri=repost_uri,
+                        viewer=MockViewer(repost="some-repost-ref"),
+                    )
+                ),
+                MockPost(
+                    MockPostData(
+                        "2000-10-31T02:30:00.000-05:00",
+                        MockRecord("My new post!"),
+                        uri=new_own_post_uri,
+                    )
+                ),
+            ]
+        ),
+    )
+
+    messages = bluesky.read()
+    assert len(messages) == 1
+    assert messages[0].message == "My new post!"
+
+    assert bluesky.min_id == new_own_post_uri
+
+    messages = bluesky.read()
+    assert len(messages) == 0
+
+
 def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
     """Common monkeypatches to avoid real API calls."""
     monkeypatch.setattr(
