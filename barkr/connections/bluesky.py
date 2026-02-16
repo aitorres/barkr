@@ -283,7 +283,14 @@ class BlueskyConnection(ThreadAwareConnection):
                 created_uri,
             )
 
+            old_min_id = self.min_id
             self.min_id = created_uri
+            logger.debug(
+                "Bluesky (%s) updated min_id after write: %s -> %s",
+                self.name,
+                old_min_id,
+                self.min_id,
+            )
             posted_message_ids.append(created_uri)
 
             self.store_message_mapping(
@@ -691,11 +698,19 @@ class BlueskyConnection(ThreadAwareConnection):
         """
 
         user_feed = self._get_user_feed_with_retry()
+        old_min_id = self.min_id
 
         if user_feed:
             self.min_id = _get_latest_own_post_uri(user_feed)
         else:
             self.min_id = None
+
+        logger.debug(
+            "Bluesky (%s) set min_id from user feed: %s -> %s",
+            self.name,
+            old_min_id,
+            self.min_id,
+        )
 
     def _get_user_feed_with_retry(self) -> Optional[FeedViewPost]:
         """

@@ -106,15 +106,15 @@ class Barkr:
                 with self.message_queues_lock:
                     messages = self.message_queues[connection.name][:max_amount]
                     n_messages = len(messages)
-                    logger.info(
-                        "Writing %s message(s) from %s's queue "
-                        "(%s messages remaining after that)",
-                        n_messages,
-                        connection.name,
-                        len(self.message_queues[connection.name]) - n_messages,
-                    )
 
                     if messages:
+                        logger.info(
+                            "Writing %s message(s) from %s's queue "
+                            "(%s messages remaining after that)",
+                            n_messages,
+                            connection.name,
+                            len(self.message_queues[connection.name]) - n_messages,
+                        )
                         connection.write(messages)
                         logger.info(
                             "Posted %s message(s) from %s's queue",
