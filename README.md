@@ -37,6 +37,7 @@ from barkr.connections import (
     RSSConnection,
     TelegramConnection,
     TwitterConnection,
+    WebhookConnection,
 )
 
 from barkr.models import Message
@@ -90,6 +91,12 @@ barkr = Barkr(
             "Read only RSS connection",
             [ConnectionMode.READ],
             "<RSS FEED URL HERE>"
+        ),
+        # And post messages to a custom webhook as well!
+        WebhookConnection(
+            "Write only Webhook connection",
+            [ConnectionMode.WRITE],
+            "<WEBHOOK URL HERE>",
         ),
     ]
 )

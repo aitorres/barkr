@@ -14,6 +14,7 @@ from barkr.connections.mastodon_activity_bot import MastodonActivityBotConnectio
 from barkr.connections.rss import RSSConnection
 from barkr.connections.telegram import TelegramConnection
 from barkr.connections.twitter import TwitterConnection
+from barkr.connections.webhook import WebhookConnection
 
 __all__ = [
     "Connection",
@@ -26,4 +27,5 @@ __all__ = [
     "BlueskyConnection",
     "TelegramConnection",
     "RSSConnection",
+    "WebhookConnection",
 ]
