@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "barkr"
-version = "0.11.2"
+version = "0.12.0"
 description = "Yet another cross-posting tool in Python"
 authors = ["Andrés Ignacio Torres <dev@aitorres.com>"]
 readme = "README.md"

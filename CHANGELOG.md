@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.12.0] - 2026-04-14
+
+### Added
+
+- WebhookConnection: added a new connection class to support posting messages to any platform that supports incoming webhooks.
+  - This is a write-only connection, with options to set the webhook endpoint and payload key, as well as an optional Bearer token for authentication.
+
+### Changed
+
+- Logging improvements: remove some redundant logs and add context to minimum ID changes on some connections.
+- Minor dependency updates
+
 ## [0.11.2] - 2026-02-16
 
 ### Fixed
