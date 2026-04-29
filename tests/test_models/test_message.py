@@ -177,3 +177,29 @@ def test_message_and_metadata_use_slots() -> None:
 
     assert hasattr(MessageMetadata, "__slots__")
     assert not hasattr(metadata, "__dict__")
+
+
+def test_default_message_metadata_is_shared_singleton() -> None:
+    """
+    Messages that are initialized without an explicit metadata should share
+    the same default MessageMetadata instance.
+    """
+
+    # Shared default metadata instance
+    message_a = Message(id="a", message="hello", source_connection="test")
+    message_b = Message(id="b", message="world", source_connection="test")
+
+    assert message_a.metadata is message_b.metadata
+
+    expected = MessageMetadata()
+    assert message_a.metadata == expected
+    assert message_a.metadata.language is None
+    assert message_a.metadata.label is None
+    assert message_a.metadata.visibility == MessageVisibility.PUBLIC
+    assert message_a.metadata.allowed_replies is None
+
+    # Custom metadata instance
+    custom = MessageMetadata(language="en")
+    message_c = Message(id="c", message="hi", source_connection="test", metadata=custom)
+    assert message_c.metadata is custom
+    assert message_c.metadata is not message_a.metadata

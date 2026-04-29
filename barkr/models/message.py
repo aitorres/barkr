@@ -15,6 +15,10 @@ from barkr.models.message_metadata import MessageMetadata
 from barkr.models.message_type import MessageType
 from barkr.models.message_visibility import MessageVisibility
 
+# Shared default `MessageMetadata` instance reused across every `Message`
+# instance that doesn't explicitly provide metadata.
+_DEFAULT_MESSAGE_METADATA: MessageMetadata = MessageMetadata()
+
 
 @dataclass(frozen=True, slots=True)
 class Message:
@@ -34,7 +38,7 @@ class Message:
     media: list[Media] = field(default_factory=list)
 
     # Optional metadata
-    metadata: MessageMetadata = field(default_factory=MessageMetadata)
+    metadata: MessageMetadata = _DEFAULT_MESSAGE_METADATA
 
     # Reply tracking
     reply_to_id: Optional[str] = None
