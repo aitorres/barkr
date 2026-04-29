@@ -122,11 +122,10 @@ class Barkr:
                             connection.name,
                         )
 
-            # Clear sent messages from the queue for the current connection
+            # Clear sent messages from the queue for the current connection.
+            # Existing list is mutated in-place.
             with self.message_queues_lock:
-                self.message_queues[connection.name] = self.message_queues[
-                    connection.name
-                ][max_amount:]
+                del self.message_queues[connection.name][:max_amount]
 
     def write_message(self, message: Message) -> None:
         """
