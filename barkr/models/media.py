@@ -16,7 +16,7 @@ SUPPORTED_MIME_TYPES: Final[set[str]] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Media:
     """
     A generic media object with a MIME type and the content

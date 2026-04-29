@@ -161,3 +161,19 @@ def test_message_has_content() -> None:
         metadata=MessageMetadata(visibility=MessageVisibility.PRIVATE),
         source_connection="test",
     ).has_content(MessageType.TEXT_ONLY)
+
+
+def test_message_and_metadata_use_slots() -> None:
+    """
+    Message and MessageMetadata must remain slotted dataclasses
+    (no per-instance __dict__).
+    """
+
+    message = Message(id="1", message="hi", source_connection="test")
+    metadata = MessageMetadata()
+
+    assert hasattr(Message, "__slots__")
+    assert not hasattr(message, "__dict__")
+
+    assert hasattr(MessageMetadata, "__slots__")
+    assert not hasattr(metadata, "__dict__")

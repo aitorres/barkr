@@ -63,3 +63,14 @@ def test_media_is_valid() -> None:
         mime_type="unsupported/type",
         content=b"Hello, world!",
     ).is_valid()
+
+
+def test_media_uses_slots() -> None:
+    """
+    Media must remain a slotted dataclass (no per-instance __dict__).
+    """
+
+    media = Media(mime_type="image/jpeg", content=b"x")
+
+    assert hasattr(Media, "__slots__")
+    assert not hasattr(media, "__dict__")

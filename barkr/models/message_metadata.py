@@ -14,7 +14,7 @@ from barkr.models.message_allowed_replies import MessageAllowedReplies
 from barkr.models.message_visibility import MessageVisibility
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MessageMetadata:
     """
     A container for optional message metadata such as

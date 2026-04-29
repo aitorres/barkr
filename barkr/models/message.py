@@ -16,7 +16,7 @@ from barkr.models.message_type import MessageType
 from barkr.models.message_visibility import MessageVisibility
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Message:
     """
     A generic message object with an ID and a message body,
