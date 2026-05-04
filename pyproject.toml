@@ -1,10 +1,13 @@
-[tool.poetry]
+[project]
 name = "barkr"
 version = "0.12.0"
 description = "Yet another cross-posting tool in Python"
-authors = ["Andrés Ignacio Torres <dev@aitorres.com>"]
+authors = [
+    { name = "Andrés Ignacio Torres", email = "dev@aitorres.com" },
+]
 readme = "README.md"
-repository = "https://github.com/aitorres/barkr"
+requires-python = ">=3.10.0,<3.15"
+license = "AGPL-3.0-or-later"
 keywords = [
     "python",
     "cli",
@@ -14,35 +17,47 @@ keywords = [
     "fediverse",
     "twitter",
     "bluesky",
+    "discord",
+    "telegram",
+    "rss",
+    "webhook",
+    "atproto",
+    "automation",
+    "social media automation",
 ]
+dynamic = ["classifiers"]
+dependencies = [
+    "beautifulsoup4 (>=4.14.3,<5.0.0)",
+    "lxml (>=6.1.0,<7.0.0)",
+    "mastodon-py (>=2.2.1,<3.0.0)",
+    "tweepy (>=4.16.0,<5.0.0)",
+    "atproto (>=0.0.65,<0.0.66)",
+    "python-telegram-bot (>=22.7,<23.0)",
+    "discord-py (>=2.7.1,<3.0.0)",
+    "feedparser (>=6.0.12,<7.0.0)",
+    "requests (>=2.33.1,<3.0.0)",
+    "pillow (>=12.2.0,<13.0.0)",
+]
+
+[project.urls]
+Repository = "https://github.com/aitorres/barkr"
+"Bug Tracker" = "https://github.com/aitorres/barkr/issues"
+"Change Log" = "https://github.com/aitorres/barkr/blob/main/CHANGELOG.md"
+
+[tool.poetry]
+requires-poetry = ">=2.0"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Topic :: Communications",
+    "Topic :: Communications :: Chat",
     "Topic :: Internet",
+    "Topic :: Internet :: WWW/HTTP",
+    "Typing :: Typed",
 ]
-
-[tool.poetry.urls]
-"Bug Tracker" = "https://github.com/aitorres/barkr/issues"
-"Change Log" = "https://github.com/aitorres/barkr/blob/main/CHANGELOG.md"
-
-
-[tool.poetry.dependencies]
-python = "^3.10.0, <3.15"
-beautifulsoup4 = "^4.14.3"
-lxml = "^6.1.0"
-mastodon-py = "^2.2.1"
-tweepy = "^4.16.0"
-atproto = "^0.0.65"
-python-telegram-bot = "^22.7"
-discord-py = "^2.7.1"
-feedparser = "^6.0.12"
-requests = "^2.33.1"
-pillow = "^12.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.3"
