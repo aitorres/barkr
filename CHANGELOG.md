@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.0] - 2026-05-04
+
+### Changed
+
+- General improvements on memory usage and performance
+  - `Media`, `Message`, `MessageMetadata` objects should use less memory overall
+  - Reduced initialization of default metadata objects
+  - Improved cleanup of just-sent messages on the writing thread
+- Minor dependency updates
+- Modernize `pyproject.toml` configuration with `poetry` v2 features
+- Updates to Github Actions workflows
+
 ## [0.12.0] - 2026-04-14
 
 ### Added
