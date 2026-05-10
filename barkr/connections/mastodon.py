@@ -23,6 +23,7 @@ from barkr.utils import REQUESTS_EMBED_GET_TIMEOUT, REQUESTS_HEADERS
 logger = logging.getLogger()
 
 MASTODON_WRITE_RETRIES: Final[int] = 3
+MASTODON_MAX_MEDIA_BYTES: Final[int] = 40 * 1024 * 1024  # 40 MB
 
 
 class MastodonConnection(ThreadAwareConnection):
@@ -268,14 +269,42 @@ def _get_media_list_from_status(status: dict[str, Any]) -> list[Media]:
         # Downloading the content of the media from its URL
         try:
             response = requests.get(
-                url, timeout=REQUESTS_EMBED_GET_TIMEOUT, headers=REQUESTS_HEADERS
+                url,
+                timeout=REQUESTS_EMBED_GET_TIMEOUT,
+                headers=REQUESTS_HEADERS,
+                stream=True,
             )
         except RequestException as e:
             logger.error("Failed to download media from %s: %s", url, e)
             continue
 
         if response.status_code == 200:
+            # Reject oversized media early when the server advertises a size.
+            advertised_size = int(
+                getattr(response, "headers", {}).get("Content-Length", 0) or 0
+            )
+            if advertised_size > MASTODON_MAX_MEDIA_BYTES:
+                logger.warning(
+                    "Skipping media from %s: advertised size %d bytes exceeds "
+                    "%d-byte cap",
+                    url,
+                    advertised_size,
+                    MASTODON_MAX_MEDIA_BYTES,
+                )
+                getattr(response, "close", lambda: None)()
+                continue
+
             media_content = response.content
+
+            if len(media_content) > MASTODON_MAX_MEDIA_BYTES:
+                logger.warning(
+                    "Skipping media from %s: downloaded size %d bytes exceeds "
+                    "%d-byte cap",
+                    url,
+                    len(media_content),
+                    MASTODON_MAX_MEDIA_BYTES,
+                )
+                continue
 
             # Guessing the MIME type from the URL
             mime_type, _ = mimetypes.guess_type(url)

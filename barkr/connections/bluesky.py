@@ -647,42 +647,42 @@ class BlueskyConnection(ThreadAwareConnection):
 
         try:
             # Open the image to ensure it's valid
-            img = Image.open(io.BytesIO(img_data))
+            with Image.open(io.BytesIO(img_data)) as img:
+                # If the image is already smaller than the limit,
+                # no need to compress it further
+                if len(img_data) <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
+                    return img_data
 
-            # If the image is already smaller than the limit,
-            # no need to compress it further
-            if len(img_data) <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
-                return img_data
+                # Resizing the image to fit within the size limit
+                original_width, original_height = img.size
 
-            # Resizing the image to fit within the size limit
-            original_width, original_height = img.size
+                for scale_factor in [0.8, 0.75]:
+                    new_width = int(original_width * scale_factor)
+                    new_height = int(original_height * scale_factor)
 
-            for scale_factor in [0.8, 0.75]:
-                new_width = int(original_width * scale_factor)
-                new_height = int(original_height * scale_factor)
+                    with img.resize(
+                        (new_width, new_height), Image.Resampling.LANCZOS
+                    ) as resized_img:
+                        for quality in [85, 70]:
+                            with io.BytesIO() as output:
+                                resized_img.save(
+                                    output,
+                                    format="JPEG",
+                                    quality=quality,
+                                    optimize=True,
+                                )
 
-                resized_img = img.resize(
-                    (new_width, new_height), Image.Resampling.LANCZOS
-                )
-
-                # Try different qualities with the resized image
-                for quality in [85, 70]:
-                    output = io.BytesIO()
-                    resized_img.save(
-                        output, format="JPEG", quality=quality, optimize=True
-                    )
-                    compressed_data = output.getvalue()
-
-                    if len(compressed_data) <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
-                        logger.info(
-                            "Compressed image to %d bytes using "
-                            "resize=%dx%d and quality=%d",
-                            len(compressed_data),
-                            new_width,
-                            new_height,
-                            quality,
-                        )
-                        return compressed_data
+                                if output.tell() <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
+                                    compressed_data = output.getvalue()
+                                    logger.info(
+                                        "Compressed image to %d bytes using "
+                                        "resize=%dx%d and quality=%d",
+                                        len(compressed_data),
+                                        new_width,
+                                        new_height,
+                                        quality,
+                                    )
+                                    return compressed_data
 
             # If we still can't compress enough, give up
             logger.warning("Could not compress image to fit within size limit")
