@@ -9,20 +9,17 @@ from barkr.connections.internal.bounded import BoundedIdSet, BoundedOrderedDict
 
 
 def test_bounded_id_set_basic_set_semantics() -> None:
-    """``BoundedIdSet`` behaves like a set for ``in``, ``len``, ``bool``, ==."""
+    """``BoundedIdSet`` behaves like a set for ``in``, ``bool``, ==."""
     s = BoundedIdSet(maxlen=10)
     assert not s
-    assert len(s) == 0
     assert s == set()
 
     s.add("a")
     s.update(["b", "c"])
     assert "a" in s
     assert "z" not in s
-    assert len(s) == 3
     assert bool(s)
     assert s == {"a", "b", "c"}
-    assert sorted(iter(s)) == ["a", "b", "c"]
 
 
 def test_bounded_id_set_evicts_oldest_when_capped() -> None:

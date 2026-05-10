@@ -4,7 +4,7 @@ memory growth in long-running processes.
 """
 
 from collections import OrderedDict
-from typing import Any, Final, Iterable, Iterator
+from typing import Any, Final, Iterable
 
 # Maximum number of recently-posted message IDs retained per connection.
 # Oldest IDs are evicted first (LRU). Size is big enough (vs. realistic polling windows)
@@ -52,12 +52,6 @@ class BoundedIdSet:
     def __contains__(self, item: object) -> bool:
         return item in self._data
 
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._data)
-
-    def __len__(self) -> int:
-        return len(self._data)
-
     def __bool__(self) -> bool:
         return bool(self._data)
 
@@ -69,8 +63,6 @@ class BoundedIdSet:
             return set(self._data) == other
 
         return NotImplemented
-
-    __hash__ = None  # type: ignore[assignment]
 
     def __repr__(self) -> str:
         return f"BoundedIdSet({set(self._data)!r}, maxlen={self._maxlen})"
