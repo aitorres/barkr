@@ -53,7 +53,7 @@ from barkr.utils import (
 logger = logging.getLogger()
 
 BLUESKY_MAX_MESSAGE_LENGTH: Final[int] = 300
-BLUESKY_MAX_IMAGE_SIZE_BYTES: Final[int] = 1000000
+BLUESKY_MAX_IMAGE_SIZE_BYTES: Final[int] = 2000000
 BLUESKY_EXPONENTIAL_BACKOFF_RETRIES: Final[int] = 3
 BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY: Final[float] = 0.1  # 100ms
 BLUESKY_REQUEST_TIMEOUT: Final[int] = 15  # seconds
