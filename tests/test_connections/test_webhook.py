@@ -227,3 +227,30 @@ def test_webhook_connection_write_integration(monkeypatch: pytest.MonkeyPatch) -
 
     webhook.write([Message("test_id2", "test message 2", source_connection="test")])
     assert call_count == 2
+
+
+def test_webhook_connection_empty_payload_key_defaults(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An empty/whitespace ``payload_key`` falls back to the default and warns."""
+
+    with caplog.at_level("WARNING"):
+        webhook_empty = WebhookConnection(
+            "Empty Key",
+            [ConnectionMode.WRITE],
+            webhook_endpoint="https://example.com/webhook",
+            payload_key="",
+        )
+    assert webhook_empty.payload_key == "content"
+    assert any("empty payload key" in record.message for record in caplog.records)
+
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        webhook_blank = WebhookConnection(
+            "Blank Key",
+            [ConnectionMode.WRITE],
+            webhook_endpoint="https://example.com/webhook",
+            payload_key="   ",
+        )
+    assert webhook_blank.payload_key == "content"
+    assert any("empty payload key" in record.message for record in caplog.records)

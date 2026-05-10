@@ -73,3 +73,40 @@ def test_bounded_ordered_dict_rejects_invalid_maxlen() -> None:
     """``BoundedOrderedDict`` raises if initialized with invalid maxlen."""
     with pytest.raises(ValueError):
         BoundedOrderedDict(maxlen=0)
+
+
+def test_bounded_id_set_equality_between_instances() -> None:
+    """Two ``BoundedIdSet`` instances compare equal iff their order matches."""
+    a = BoundedIdSet(maxlen=5)
+    b = BoundedIdSet(maxlen=5)
+    a.update(["x", "y", "z"])
+    b.update(["x", "y", "z"])
+    assert a == b
+
+    b.add("z")  # already present; no order change
+    assert a == b
+
+    c = BoundedIdSet(maxlen=5)
+    c.update(["z", "y", "x"])
+    assert a != c
+
+
+def test_bounded_id_set_equality_with_unrelated_type_returns_notimplemented() -> None:
+    """``__eq__`` returns ``NotImplemented`` for unrelated types."""
+    s = BoundedIdSet(maxlen=3)
+    s.add("a")
+    # Direct call to expose the NotImplemented branch (== would coerce to False).
+    assert s.__eq__(123) is NotImplemented  # pylint: disable=unnecessary-dunder-call
+    assert s.__eq__("a") is NotImplemented  # pylint: disable=unnecessary-dunder-call
+    # And the high-level == still returns False for unrelated types.
+    assert (s == 123) is False
+
+
+def test_bounded_id_set_repr() -> None:
+    """``__repr__`` includes the contents and the cap."""
+    s = BoundedIdSet(maxlen=7)
+    s.update(["a", "b"])
+    text = repr(s)
+    assert text.startswith("BoundedIdSet(")
+    assert "maxlen=7" in text
+    assert "'a'" in text and "'b'" in text
