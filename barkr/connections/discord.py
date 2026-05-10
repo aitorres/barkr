@@ -25,6 +25,8 @@ class DiscordConnection(Connection):
     via a Discord bot.
     """
 
+    __slots__ = ("intents", "token", "channel_id")
+
     intents: discord.Intents
     token: str
     channel_id: int

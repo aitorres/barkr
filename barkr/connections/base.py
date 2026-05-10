@@ -34,10 +34,12 @@ class Connection:
     of messages already posted by one connection on subsequent fetches.
     """
 
+    __slots__ = ("name", "modes", "posted_message_ids", "supported_message_type")
+
     name: str
     modes: list[ConnectionMode]
     posted_message_ids: set[str]
-    supported_message_type: MessageType = MessageType.TEXT_ONLY
+    supported_message_type: MessageType
 
     def __init__(self, name: str, modes: list[ConnectionMode]) -> None:
         """
@@ -56,6 +58,8 @@ class Connection:
         self.name = name
         self.modes = modes
         self.posted_message_ids = set()
+        # Default supported message type; subclasses may override in __init__.
+        self.supported_message_type = MessageType.TEXT_ONLY
 
     def read(self) -> list[Message]:
         """
@@ -158,6 +162,10 @@ class ThreadAwareConnection(Connection):
     Format: {(source_connection, source_id): {dest_connection: dest_id}}
     Example: {('bluesky', 'at://did.../post/123'): {'mastodon': 'MA1'}}
     """
+
+    # Intentionally declaring empty __slots__ since this class does not
+    # add any extra instance attributes.
+    __slots__ = ()
 
     message_id_map: dict[tuple[str, str], dict[str, str]] = {}
     message_id_map_lock: Lock = Lock()

@@ -83,7 +83,7 @@ class Barkr:
                 with self.message_queues_lock:
                     for name in self.message_queues:
                         if name != connection.name:
-                            self.message_queues[name] += messages
+                            self.message_queues[name].extend(messages)
                             logger.info(
                                 "Added %s message(s) from %s to %s queue",
                                 len(messages),

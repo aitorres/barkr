@@ -72,11 +72,12 @@ class BlueskyConnection(ThreadAwareConnection):
     Requires handle and an app password for authentication.
     """
 
-    supported_message_type: MessageType = MessageType.TEXT_MEDIA
+    __slots__ = ("service", "handle", "compress_images", "min_id")
+
     service: Client
     handle: str
     compress_images: bool
-    min_id: Optional[str] = None
+    min_id: Optional[str]
 
     def __init__(  # pylint: disable=too-many-arguments too-many-positional-arguments
         self,
@@ -102,6 +103,7 @@ class BlueskyConnection(ThreadAwareConnection):
         """
 
         super().__init__(name, modes)
+        self.supported_message_type = MessageType.TEXT_MEDIA
 
         self.service = Client(
             request=Request(timeout=Timeout(timeout=BLUESKY_REQUEST_TIMEOUT))
@@ -109,6 +111,7 @@ class BlueskyConnection(ThreadAwareConnection):
         self.service.login(handle, password)
         self.handle = handle
         self.compress_images = compress_images
+        self.min_id = None
 
         # Set the initial min_id to the most recent post's URI,
         # which is chronologically sortable due to TID-based record keys

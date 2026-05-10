@@ -24,6 +24,8 @@ class TelegramConnection(Connection):
     bot to a chat or channel.
     """
 
+    __slots__ = ("app", "chat_id")
+
     app: Application
     chat_id: str
 

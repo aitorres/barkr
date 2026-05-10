@@ -12,7 +12,7 @@ from typing import Final, Optional
 import requests
 
 from barkr.connections.base import Connection, ConnectionMode
-from barkr.models import Message, MessageType
+from barkr.models import Message
 
 logger = logging.getLogger()
 
@@ -29,7 +29,7 @@ class WebhookConnection(Connection):
     Messages are sent as JSON POST requests to the configured endpoint.
     """
 
-    supported_message_type: MessageType = MessageType.TEXT_ONLY
+    __slots__ = ("webhook_endpoint", "payload_key", "auth_token")
 
     webhook_endpoint: str
     payload_key: str

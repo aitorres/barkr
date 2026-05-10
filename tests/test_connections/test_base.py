@@ -95,7 +95,7 @@ def test_connection_handles_posted_message_ids(monkeypatch: pytest.MonkeyPatch) 
             Message(id="3", message="test message 3", source_connection="test"),
         ]
 
-    monkeypatch.setattr(connection, "_fetch", mock_fetch)
+    monkeypatch.setattr(Connection, "_fetch", staticmethod(mock_fetch))
 
     # Mock the _post method to add the message ID to the posted_message_ids set
     # and return the message ID
@@ -106,7 +106,7 @@ def test_connection_handles_posted_message_ids(monkeypatch: pytest.MonkeyPatch) 
             posted_message_ids.append(message.id)
         return posted_message_ids
 
-    monkeypatch.setattr(connection, "_post", mock_post)
+    monkeypatch.setattr(Connection, "_post", staticmethod(mock_post))
 
     # Assert initial state
     assert connection.posted_message_ids == set()
@@ -169,7 +169,7 @@ def test_connection_avoids_infinite_loops(monkeypatch: pytest.MonkeyPatch) -> No
             Message(id="3", message="test message 3", source_connection="Connection A"),
         ]
 
-    monkeypatch.setattr(connection_a, "_fetch", mock_fetch_a)
+    monkeypatch.setattr(Connection, "_fetch", staticmethod(mock_fetch_a))
 
     messages = connection_a.read()
     assert len(messages) == 3
@@ -181,7 +181,7 @@ def test_connection_avoids_infinite_loops(monkeypatch: pytest.MonkeyPatch) -> No
             posted_by_b.append(message.id + "-b")
         return posted_by_b
 
-    monkeypatch.setattr(connection_b, "_post", mock_post_b)
+    monkeypatch.setattr(Connection, "_post", staticmethod(mock_post_b))
 
     connection_b.write(messages)
 
@@ -199,7 +199,7 @@ def test_connection_avoids_infinite_loops(monkeypatch: pytest.MonkeyPatch) -> No
             ),
         ]
 
-    monkeypatch.setattr(connection_b, "_fetch", mock_fetch_b)
+    monkeypatch.setattr(Connection, "_fetch", staticmethod(mock_fetch_b))
 
     # We shouldn't bring anything here and this should stop the loop
     messages = connection_b.read()
@@ -228,7 +228,7 @@ def test_connection_handles_read_exceptions(monkeypatch: pytest.MonkeyPatch) -> 
             Message(id="3", message="test message 3", source_connection="test"),
         ]
 
-    monkeypatch.setattr(connection, "_fetch", mock_fetch_a)
+    monkeypatch.setattr(Connection, "_fetch", staticmethod(mock_fetch_a))
 
     # First attempt will raise an exception that will be caught
     # with no messages returned
@@ -244,7 +244,7 @@ def test_connection_handles_read_exceptions(monkeypatch: pytest.MonkeyPatch) -> 
     def mock_fetch_b() -> list[Message]:
         raise NotImplementedError("Test NotImplementedError")
 
-    monkeypatch.setattr(connection, "_fetch", mock_fetch_b)
+    monkeypatch.setattr(Connection, "_fetch", staticmethod(mock_fetch_b))
 
     with pytest.raises(NotImplementedError):
         connection.read()
@@ -270,7 +270,7 @@ def test_connection_does_not_write_empty_message(
             posted_message_ids.append(message.id)
         return posted_message_ids
 
-    monkeypatch.setattr(connection, "_post", mock_post)
+    monkeypatch.setattr(Connection, "_post", staticmethod(mock_post))
 
     # Post an empty message
     connection.write([Message(id="1", message="", source_connection="test")])

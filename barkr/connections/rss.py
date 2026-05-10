@@ -37,9 +37,11 @@ class RSSConnection(Connection):
     supporting reading messages from a given feed.
     """
 
+    __slots__ = ("feed_url", "feed_message_callback", "feed_min_date")
+
     feed_url: str
     feed_message_callback: Callable[[str, str], str]
-    feed_min_date: Optional[struct_time] = None
+    feed_min_date: Optional[struct_time]
 
     def __init__(
         self,
@@ -70,6 +72,7 @@ class RSSConnection(Connection):
         # Storing parameters for later use
         self.feed_url = feed_url
         self.feed_message_callback = feed_message_callback
+        self.feed_min_date = None
 
         # Getting most recent post date
         try:

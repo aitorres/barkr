@@ -31,10 +31,11 @@ class MastodonConnection(ThreadAwareConnection):
     supporting reading and writing statuses from the authenticated user.
     """
 
-    supported_message_type = MessageType.TEXT_MEDIA
+    __slots__ = ("service", "min_id", "account_id")
 
     service: Mastodon
     min_id: Optional[str]
+    account_id: str
 
     def __init__(
         self,
@@ -57,13 +58,14 @@ class MastodonConnection(ThreadAwareConnection):
         :param instance_url: The URL of the Mastodon instance
         """
         super().__init__(name, modes)
+        self.supported_message_type = MessageType.TEXT_MEDIA
 
         self.service = Mastodon(
             access_token=access_token,
             api_base_url=instance_url,
             request_timeout=10,
         )
-        self.account_id: str = self.service.account_verify_credentials()["id"]
+        self.account_id = self.service.account_verify_credentials()["id"]
 
         current_statuses = self.service.account_statuses(
             self.account_id, exclude_reblogs=True, exclude_replies=True
@@ -113,7 +115,7 @@ class MastodonConnection(ThreadAwareConnection):
         messages = [
             Message(
                 id=status["id"],
-                message=BeautifulSoup(status["content"], "lxml").text,
+                message=BeautifulSoup(status["content"], "html.parser").text,
                 source_connection=self.name,
                 metadata=MessageMetadata(
                     language=status["language"],

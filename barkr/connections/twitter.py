@@ -25,6 +25,8 @@ class TwitterConnection(ThreadAwareConnection):
     from the authenticated user via their API keys.
     """
 
+    __slots__ = ("client",)
+
     client: Client
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments

@@ -29,7 +29,7 @@ class MastodonActivityBotConnection(Connection):
     their API url and password.
     """
 
-    supported_message_type = MessageType.TEXT_MEDIA
+    __slots__ = ("password", "api_url")
 
     password: str
     api_url: str
@@ -46,6 +46,7 @@ class MastodonActivityBotConnection(Connection):
         :param password: The password for the ActivityBot
         """
         super().__init__(name, modes)
+        self.supported_message_type = MessageType.TEXT_MEDIA
 
         logger.info("Initializing MastodonActivityBot (%s) connection", self.name)
         if self.modes != [ConnectionMode.WRITE]:
