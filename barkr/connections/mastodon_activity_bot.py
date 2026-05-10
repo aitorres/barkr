@@ -9,11 +9,13 @@ ref: https://gitlab.com/edent/activity-bot
 """
 
 import logging
+import mimetypes
+from typing import Optional
 
 import requests
 
 from barkr.connections.base import Connection, ConnectionMode
-from barkr.models import Message
+from barkr.models import Media, Message, MessageType
 from barkr.utils import REQUESTS_EMBED_GET_TIMEOUT, REQUESTS_HEADERS
 
 logger = logging.getLogger()
@@ -26,6 +28,8 @@ class MastodonActivityBotConnection(Connection):
     Supports writing statuses to Mastodon from the bot via
     their API url and password.
     """
+
+    supported_message_type = MessageType.TEXT_MEDIA
 
     password: str
     api_url: str
@@ -71,9 +75,25 @@ class MastodonActivityBotConnection(Connection):
             logger.info(
                 "Posting message to ActivityBot (%s): %s", self.name, message.message
             )
+
+            data: dict[str, str] = {
+                "password": self.password,
+                "content": message.message,
+            }
+            files: Optional[dict[str, tuple[str, bytes, str]]] = None
+
+            image = self._select_image_attachment(message)
+            if image is not None:
+                extension = mimetypes.guess_extension(image.mime_type) or ".bin"
+                filename = f"upload{extension}"
+                files = {"image": (filename, image.content, image.mime_type)}
+                if image.alt_text:
+                    data["alt"] = image.alt_text
+
             response = requests.post(
                 self.api_url,
-                data={"password": self.password, "content": message.message},
+                data=data,
+                files=files,
                 headers=REQUESTS_HEADERS,
                 timeout=REQUESTS_EMBED_GET_TIMEOUT,
             )
@@ -92,3 +112,34 @@ class MastodonActivityBotConnection(Connection):
                 )
 
         return []
+
+    def _select_image_attachment(self, message: Message) -> Optional[Media]:
+        """
+        Pick the first valid image attachment from the message, if any.
+
+        The ActivityBot `send` endpoint accepts a single `image` file upload
+        plus an optional `alt` text field, so any additional images (or any videos)
+        are skipped with a warning.
+
+        :param message: The message whose media attachments to inspect
+        :return: The first valid image `Media`, or `None` if there is none
+        """
+
+        first_image: Optional[Media] = next(
+            (
+                media
+                for media in message.media
+                if media.is_valid() and media.mime_type.startswith("image/")
+            ),
+            None,
+        )
+
+        if len(message.media) > 1:
+            logger.warning(
+                "ActivityBot (%s) only supports a single image per post;"
+                " %d additional media attachment(s) will be skipped.",
+                self.name,
+                len(message.media) - 1,
+            )
+
+        return first_image
