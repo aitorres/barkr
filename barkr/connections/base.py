@@ -210,8 +210,8 @@ class ThreadAwareConnection(Connection):
 
         with self.message_id_map_lock:
             key = (source_connection, source_id)
-            mapping = self.message_id_map.get(key, {})
-            dest_id = mapping.get(self.name)
+            mapping: dict[str, str] = self.message_id_map.get(key, {})
+            dest_id: Optional[str] = mapping.get(self.name)
 
             if dest_id:
                 logger.debug(
