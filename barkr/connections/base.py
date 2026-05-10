@@ -8,6 +8,7 @@ from enum import Enum
 from threading import Lock
 from typing import Optional
 
+from barkr.connections.internal.bounded import BoundedIdSet, BoundedOrderedDict
 from barkr.models import Message, MessageType
 
 logger = logging.getLogger()
@@ -38,7 +39,7 @@ class Connection:
 
     name: str
     modes: list[ConnectionMode]
-    posted_message_ids: set[str]
+    posted_message_ids: BoundedIdSet
     supported_message_type: MessageType
 
     def __init__(self, name: str, modes: list[ConnectionMode]) -> None:
@@ -57,7 +58,7 @@ class Connection:
 
         self.name = name
         self.modes = modes
-        self.posted_message_ids = set()
+        self.posted_message_ids = BoundedIdSet()
         # Default supported message type; subclasses may override in __init__.
         self.supported_message_type = MessageType.TEXT_ONLY
 
@@ -167,7 +168,7 @@ class ThreadAwareConnection(Connection):
     # add any extra instance attributes.
     __slots__ = ()
 
-    message_id_map: dict[tuple[str, str], dict[str, str]] = {}
+    message_id_map: BoundedOrderedDict = BoundedOrderedDict()
     message_id_map_lock: Lock = Lock()
 
     def store_message_mapping(
