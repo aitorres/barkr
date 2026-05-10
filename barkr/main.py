@@ -5,6 +5,8 @@ to set crossposting among multiple channels.
 """
 
 import logging
+from collections import deque
+from itertools import islice
 from threading import Lock, Thread
 from typing import Optional
 
@@ -23,7 +25,7 @@ class Barkr:
     polling_interval: int
     write_rate_limit: Optional[int]
     connections: list[Connection]
-    message_queues: dict[str, list[Message]]
+    message_queues: dict[str, deque[Message]]
     message_queues_lock: Lock
 
     def __init__(
@@ -62,7 +64,7 @@ class Barkr:
             "Initializing Barkr instance with %s connection(s)...", len(connections)
         )
         self.connections = connections
-        self.message_queues = {connection.name: [] for connection in connections}
+        self.message_queues = {connection.name: deque() for connection in connections}
         self.message_queues_lock = Lock()
         logger.info("Barkr instance initialized!")
 
@@ -104,7 +106,8 @@ class Barkr:
             # Writing is only allowed for connections with the WRITE mode
             if ConnectionMode.WRITE in connection.modes:
                 with self.message_queues_lock:
-                    messages = self.message_queues[connection.name][:max_amount]
+                    queue = self.message_queues[connection.name]
+                    messages = list(islice(queue, max_amount))
                     n_messages = len(messages)
 
                     if messages:
@@ -113,7 +116,7 @@ class Barkr:
                             "(%s messages remaining after that)",
                             n_messages,
                             connection.name,
-                            len(self.message_queues[connection.name]) - n_messages,
+                            len(queue) - n_messages,
                         )
                         connection.write(messages)
                         logger.info(
@@ -123,9 +126,11 @@ class Barkr:
                         )
 
             # Clear sent messages from the queue for the current connection.
-            # Existing list is mutated in-place.
+            # Existing deque is mutated in-place via popleft.
             with self.message_queues_lock:
-                del self.message_queues[connection.name][:max_amount]
+                queue = self.message_queues[connection.name]
+                for _ in range(min(max_amount, len(queue))):
+                    queue.popleft()
 
     def write_message(self, message: Message) -> None:
         """

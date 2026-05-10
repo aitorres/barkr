@@ -2,11 +2,18 @@
 Test module for the main loop of the Barkr app.
 """
 
+from collections import deque
+
 import pytest
 
 from barkr.connections.base import Connection, ConnectionMode
 from barkr.main import Barkr
 from barkr.models import Message
+
+
+def _qs(barkr: Barkr) -> dict[str, list[Message]]:
+    """Snapshot ``barkr.message_queues`` as a dict of plain lists for assertions."""
+    return {name: list(queue) for name, queue in barkr.message_queues.items()}
 
 
 class ConnectionMockup(Connection):
@@ -87,10 +94,10 @@ def test_barkr_read_only() -> None:
     test_connection_2 = ConnectionMockup("TestCon2", [ConnectionMode.READ])
     barkr = Barkr([test_connection_1, test_connection_2])
     assert barkr.connections == [test_connection_1, test_connection_2]
-    assert barkr.message_queues == {"TestCon1": [], "TestCon2": []}
+    assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
 
     barkr.read()
-    assert barkr.message_queues == {
+    assert _qs(barkr) == {
         "TestCon1": [
             Message(
                 id="TestCon2-Id1",
@@ -120,7 +127,7 @@ def test_barkr_read_only() -> None:
     assert test_connection_2.posted_messages == []
 
     barkr.write()
-    assert barkr.message_queues == {"TestCon1": [], "TestCon2": []}
+    assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
     assert test_connection_1.posted_messages == []
     assert test_connection_2.posted_messages == []
 
@@ -134,31 +141,35 @@ def test_barkr_write_only() -> None:
     test_connection_2 = ConnectionMockup("TestCon2", [ConnectionMode.WRITE])
     barkr = Barkr([test_connection_1, test_connection_2])
     assert barkr.connections == [test_connection_1, test_connection_2]
-    assert barkr.message_queues == {"TestCon1": [], "TestCon2": []}
+    assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
 
     barkr.read()
-    assert barkr.message_queues == {"TestCon1": [], "TestCon2": []}
+    assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
     assert test_connection_1.posted_messages == []
     assert test_connection_2.posted_messages == []
 
     barkr.write()
-    assert barkr.message_queues == {"TestCon1": [], "TestCon2": []}
+    assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
     assert test_connection_1.posted_messages == []
     assert test_connection_2.posted_messages == []
 
     # forcing messages to appear in the queue
     barkr.message_queues = {
-        "TestCon1": [
-            Message(id="Idx", message="msg1", source_connection="test"),
-            Message(id="Idx", message="msg2", source_connection="test"),
-        ],
-        "TestCon2": [
-            Message(id="Idx", message="msg3", source_connection="test"),
-            Message(id="Idx", message="msg4", source_connection="test"),
-        ],
+        "TestCon1": deque(
+            [
+                Message(id="Idx", message="msg1", source_connection="test"),
+                Message(id="Idx", message="msg2", source_connection="test"),
+            ]
+        ),
+        "TestCon2": deque(
+            [
+                Message(id="Idx", message="msg3", source_connection="test"),
+                Message(id="Idx", message="msg4", source_connection="test"),
+            ]
+        ),
     }
     barkr.write()
-    assert barkr.message_queues == {"TestCon1": [], "TestCon2": []}
+    assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
     assert test_connection_1.posted_messages == ["msg1", "msg2"]
     assert test_connection_2.posted_messages == ["msg3", "msg4"]
 
@@ -173,10 +184,10 @@ def test_barkr_read_write() -> None:
     test_connection_2 = ConnectionMockup("TestCon2", [ConnectionMode.WRITE])
     barkr = Barkr([test_connection_1, test_connection_2])
     assert barkr.connections == [test_connection_1, test_connection_2]
-    assert barkr.message_queues == {"TestCon1": [], "TestCon2": []}
+    assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
 
     barkr.read()
-    assert barkr.message_queues == {
+    assert _qs(barkr) == {
         "TestCon1": [],
         "TestCon2": [
             Message(
@@ -195,7 +206,7 @@ def test_barkr_read_write() -> None:
     assert test_connection_2.posted_messages == []
 
     barkr.write()
-    assert barkr.message_queues == {"TestCon1": [], "TestCon2": []}
+    assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
     assert test_connection_1.posted_messages == []
     assert test_connection_2.posted_messages == [
         "TestCon1-TestMsg1",
@@ -260,7 +271,7 @@ def test_barkr_write_rate_limit() -> None:
     # enqueuing 2 messages
     barkr.read()
 
-    assert barkr.message_queues == {
+    assert _qs(barkr) == {
         "TestCon0": [],
         "TestCon1": [
             Message(
@@ -290,7 +301,7 @@ def test_barkr_write_rate_limit() -> None:
 
     # writing, this should only write 1 message and leave 1 in the queue
     barkr.write()
-    assert barkr.message_queues == {
+    assert _qs(barkr) == {
         "TestCon0": [],
         "TestCon1": [
             Message(
@@ -313,7 +324,7 @@ def test_barkr_write_rate_limit() -> None:
 
     # writing again, this should write the last message
     barkr.write()
-    assert barkr.message_queues == {
+    assert _qs(barkr) == {
         "TestCon0": [],
         "TestCon1": [],
         "TestCon2": [],
@@ -329,7 +340,7 @@ def test_barkr_write_rate_limit() -> None:
 
     # one more, should not write anything new
     barkr.write()
-    assert barkr.message_queues == {
+    assert _qs(barkr) == {
         "TestCon0": [],
         "TestCon1": [],
         "TestCon2": [],
