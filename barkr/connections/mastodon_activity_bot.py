@@ -78,7 +78,7 @@ class MastodonActivityBotConnection(Connection):
                 timeout=REQUESTS_EMBED_GET_TIMEOUT,
             )
 
-            if response.status_code != 200:
+            if not response.ok:
                 logger.error(
                     "Failed to post message to ActivityBot (%s): %s",
                     self.name,

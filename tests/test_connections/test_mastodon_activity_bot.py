@@ -56,7 +56,7 @@ def test_mastodon_activity_bot_init(monkeypatch: pytest.MonkeyPatch) -> None:
         nonlocal posted_messages  # noqa: F824
 
         posted_messages.append(data["content"])
-        return type("Response", (), {"status_code": 200, "text": "OK"})
+        return type("Response", (), {"status_code": 302, "text": "OK", "ok": True})
 
     monkeypatch.setattr("requests.post", mock_requests_post)
 
@@ -70,9 +70,13 @@ def test_mastodon_activity_bot_init(monkeypatch: pytest.MonkeyPatch) -> None:
         _url: str,
         data: dict[str, str],
         *_args,
-        **_kwargs  # pylint: disable=unused-argument
+        **_kwargs,  # pylint: disable=unused-argument
     ):
-        return type("Response", (), {"status_code": 503, "text": "Service Unavailable"})
+        return type(
+            "Response",
+            (),
+            {"status_code": 503, "text": "Service Unavailable", "ok": False},
+        )
 
     monkeypatch.setattr("requests.post", mock_requests_post_failure)
 
