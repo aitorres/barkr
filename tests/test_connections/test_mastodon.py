@@ -11,6 +11,7 @@ from requests.exceptions import RequestException
 
 from barkr.connections import ConnectionMode, MastodonConnection
 from barkr.connections.mastodon import (
+    MASTODON_MAX_MEDIA_BYTES,
     _get_media_list_from_status,
     _post_media_list_to_mastodon,
 )
@@ -698,6 +699,65 @@ def test_get_media_list_from_status(monkeypatch: pytest.MonkeyPatch) -> None:
     assert media_list[0].mime_type == "image/png"
     assert media_list[0].content == b"test content"
     assert media_list[0].alt_text == "text"
+
+
+def test_get_media_list_from_status_skips_oversized_media(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Media larger than ``MASTODON_MAX_MEDIA_BYTES`` should be skipped, both when
+    the server advertises an oversized ``Content-Length`` and when the downloaded
+    content itself exceeds the cap.
+    """
+
+    oversized = MASTODON_MAX_MEDIA_BYTES + 1
+    closed = {"called": False}
+
+    def _close() -> None:
+        closed["called"] = True
+
+    def mock_get_advertised(*_args: Any, **_kwargs: Any) -> Any:
+        return type(
+            "Response",
+            (object,),
+            {
+                "content": b"",
+                "status_code": 200,
+                "headers": {"Content-Length": str(oversized)},
+                "close": _close,
+            },
+        )
+
+    monkeypatch.setattr("requests.get", mock_get_advertised)
+
+    status = {
+        "media_attachments": [
+            {
+                "type": "image",
+                "description": "text",
+                "url": "https://example.com/media/big.jpg",
+            },
+        ]
+    }
+    assert not _get_media_list_from_status(status)
+    assert closed["called"] is True
+
+    # Case: server does not advertise size, but downloaded content is too large.
+    big_content = b"x" * oversized
+
+    def mock_get_downloaded(*_args: Any, **_kwargs: Any) -> Any:
+        return type(
+            "Response",
+            (object,),
+            {
+                "content": big_content,
+                "status_code": 200,
+                "headers": {},
+            },
+        )
+
+    monkeypatch.setattr("requests.get", mock_get_downloaded)
+    assert not _get_media_list_from_status(status)
 
 
 def test_mastodon_skips_reply_when_parent_not_crossposted(
