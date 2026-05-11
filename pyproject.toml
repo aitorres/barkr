@@ -65,11 +65,11 @@ pytest-cov = "^7.1.0"
 pre-commit = "^4.6.0"
 flake8 = "^7.3.0"
 black = "^26.3.1"
-mypy = "^1.20.2"
+mypy = "^2.0.0"
 pylint = "^4.0.5"
 isort = "^8.0.1"
 types-beautifulsoup4 = "^4.12.0.20250516"
-types-requests = "^2.33.0.20260503"
+types-requests = "^2.33.0.20260508"
 
 [tool.isort]
 src_paths = ["barkr", "tests"]
