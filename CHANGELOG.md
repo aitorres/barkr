@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.14.2] - 2026-05-11
+
+### Fixed
+
+- Bluesky connection: revert increase on maximum image size (introduced in v0.13.1), as the increase applies only to images uploaded as media attachments and not to embed thumbnails, which are still limited to 1MB by Bluesky.
+  - Renamed relevant constants and methods to reflect that the limit is specific to embed thumbnails, to prevent confusion in the future.
+
 ## [0.14.1] - 2026-05-11
 
 ### Changed
