@@ -53,7 +53,8 @@ from barkr.utils import (
 logger = logging.getLogger()
 
 BLUESKY_MAX_MESSAGE_LENGTH: Final[int] = 300
-BLUESKY_MAX_IMAGE_SIZE_BYTES: Final[int] = 2000000
+# NOTE: blob size limit is different than post image size limit
+BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES: Final[int] = 1000000
 BLUESKY_EXPONENTIAL_BACKOFF_RETRIES: Final[int] = 3
 BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY: Final[float] = 0.1  # 100ms
 BLUESKY_REQUEST_TIMEOUT: Final[int] = 15  # seconds
@@ -439,7 +440,7 @@ class BlueskyConnection(ThreadAwareConnection):
                     image := _get_meta_tag_from_html_metadata(soup, "og:image")
                 ) is not None:
                     # Fetching the image and reuploading to Bluesky
-                    thumbnail_blob = self._upload_image_url_to_atproto_blob(image)
+                    thumbnail_blob = self._upload_external_thumb_blob_from_url(image)
 
                 # Prepare the Embed object
                 embed = AppBskyEmbedExternal.Main(
@@ -583,11 +584,13 @@ class BlueskyConnection(ThreadAwareConnection):
 
         return text.replace(matching_word, url)
 
-    def _upload_image_url_to_atproto_blob(self, image_url: str) -> Optional[BlobRef]:
+    def _upload_external_thumb_blob_from_url(self, image_url: str) -> Optional[BlobRef]:
         """
         Given a URL to an image, fetches the image and uploads it
-        to Bluesky as a blob. If the image is larger than the maximum
-        allowed size, it will be compressed.
+        to Bluesky as a blob for use as the ``thumb`` of an
+        ``app.bsky.embed.external`` (link-card) embed. If the image is
+        larger than the link-card thumbnail blob limit, it will be
+        compressed (when ``compress_images`` is enabled).
 
         :param image_url: The URL of the image to upload
         :return: The BlobRef object referencing the uploaded image blob
@@ -604,14 +607,14 @@ class BlueskyConnection(ThreadAwareConnection):
             return None
 
         # Check if image needs compression
-        if len(img_data) > BLUESKY_MAX_IMAGE_SIZE_BYTES:
+        if len(img_data) > BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES:
             if not self.compress_images:
                 logger.warning(
                     "Image from %s (%d bytes) exceeds limit (%d bytes), "
                     "compression disabled for Bluesky (%s), skipping upload",
                     image_url,
                     len(img_data),
-                    BLUESKY_MAX_IMAGE_SIZE_BYTES,
+                    BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES,
                     self.name,
                 )
                 return None
@@ -621,7 +624,7 @@ class BlueskyConnection(ThreadAwareConnection):
                 image_url,
                 len(img_data),
             )
-            img_data = self._compress_image(img_data)
+            img_data = self._compress_external_thumb_image(img_data)
             if img_data is None:
                 logger.warning("Failed to compress image from %s", image_url)
                 return None
@@ -632,9 +635,10 @@ class BlueskyConnection(ThreadAwareConnection):
             logger.warning("Failed to upload image to Bluesky (%s): %s", self.name, e)
             return None
 
-    def _compress_image(self, img_data: bytes) -> Optional[bytes]:
+    def _compress_external_thumb_image(self, img_data: bytes) -> Optional[bytes]:
         """
-        Compress an image to fit within the Bluesky image size limit.
+        Compress an image to fit within the Bluesky link-card thumbnail
+        blob size limit (``BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES``).
         This is attempted by scaling down the image.
 
         This method uses the Pillow library to handle image processing.
@@ -650,7 +654,7 @@ class BlueskyConnection(ThreadAwareConnection):
             with Image.open(io.BytesIO(img_data)) as img:
                 # If the image is already smaller than the limit,
                 # no need to compress it further
-                if len(img_data) <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
+                if len(img_data) <= BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES:
                     return img_data
 
                 # Resizing the image to fit within the size limit
@@ -672,7 +676,10 @@ class BlueskyConnection(ThreadAwareConnection):
                                     optimize=True,
                                 )
 
-                                if output.tell() <= BLUESKY_MAX_IMAGE_SIZE_BYTES:
+                                if (
+                                    output.tell()
+                                    <= BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES
+                                ):
                                     compressed_data = output.getvalue()
                                     logger.info(
                                         "Compressed image to %d bytes using "

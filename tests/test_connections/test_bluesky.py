@@ -464,7 +464,7 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
 
         return MockResponse(b"", 404)
 
-    def mock_upload_image_url_to_atproto_blob(_self, image_url: str):
+    def mock_upload_external_thumb_blob_from_url(_self, image_url: str):
         if "valid-url.com/image.jpg" in image_url:
             return BlobRef(ref="mock_blob_ref", mimeType="image/jpeg", size=12345)
 
@@ -472,17 +472,18 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
 
     monkeypatch.setattr("requests.get", mock_requests_get)
     monkeypatch.setattr(
-        "barkr.connections.bluesky.BlueskyConnection._upload_image_url_to_atproto_blob",
-        mock_upload_image_url_to_atproto_blob,
+        "barkr.connections.bluesky.BlueskyConnection"
+        "._upload_external_thumb_blob_from_url",
+        mock_upload_external_thumb_blob_from_url,
+    )
+
+    generate = (
+        connection._generate_post_embed_and_facets  # pylint: disable=protected-access
     )
 
     # Test case 1: Text with a valid URL
     text = "Check this out: https://valid-url.com"
-    embed, facets = (
-        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
-            text
-        )
-    )
+    embed, facets = generate(text)
     assert embed is not None
     assert embed.external.uri == "https://valid-url.com"
     assert embed.external.title == "Valid URL"
@@ -493,11 +494,7 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
 
     # Test case 2: Text with a URL that has no metadata
     text = "Visit this: https://no-meta.com"
-    embed, facets = (
-        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
-            text
-        )
-    )
+    embed, facets = generate(text)
     assert embed is not None
     assert embed.external.uri == "https://no-meta.com"
     assert embed.external.title == "No Meta"
@@ -508,21 +505,13 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
 
     # Test case 3: Text with an invalid URL
     text = "This link is broken: https:/invalid-url.com"
-    embed, facets = (
-        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
-            text
-        )
-    )
+    embed, facets = generate(text)
     assert embed is None
     assert len(facets) == 0
 
     # Test case 4: Text with multiple URLs
     text = "Multiple links: https://valid-url.com and https://no-meta.com"
-    embed, facets = (
-        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
-            text
-        )
-    )
+    embed, facets = generate(text)
     assert embed is not None
     assert embed.external.uri == "https://valid-url.com"
     assert len(facets) == 2
@@ -531,11 +520,7 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
 
     # Test case 5: Text with no URLs
     text = "This text has no links."
-    embed, facets = (
-        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
-            text
-        )
-    )
+    embed, facets = generate(text)
     assert embed is None
     assert len(facets) == 0
 
@@ -553,15 +538,16 @@ def test_generate_post_embed_and_facets_timeout_cases(
         "test_password",
     )
 
-    def mock_upload_image_url_to_atproto_blob(_self, image_url: str):
+    def mock_upload_external_thumb_blob_from_url(_self, image_url: str):
         if "valid-url.com/image.jpg" in image_url:
             return BlobRef(ref="mock_blob_ref", mimeType="image/jpeg", size=12345)
 
         return None
 
     monkeypatch.setattr(
-        "barkr.connections.bluesky.BlueskyConnection._upload_image_url_to_atproto_blob",
-        mock_upload_image_url_to_atproto_blob,
+        "barkr.connections.bluesky.BlueskyConnection"
+        "._upload_external_thumb_blob_from_url",
+        mock_upload_external_thumb_blob_from_url,
     )
 
     # Test case 1: request fails, but we still want to get the URL facet
@@ -579,12 +565,12 @@ def test_generate_post_embed_and_facets_timeout_cases(
 
     monkeypatch.setattr("requests.get", mock_requests_get_fail)
 
-    text = "Check this out: https://url-that-times-out.com"
-    embed, facets = (
-        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
-            text
-        )
+    generate = (
+        connection._generate_post_embed_and_facets  # pylint: disable=protected-access
     )
+
+    text = "Check this out: https://url-that-times-out.com"
+    embed, facets = generate(text)
     assert embed is None
     assert len(facets) == 1
     assert facets[0].features[0].uri == "https://url-that-times-out.com"
@@ -592,11 +578,7 @@ def test_generate_post_embed_and_facets_timeout_cases(
     # Test case 2: the first URL times out, but the second one is valid
     # so we should get two facets, and an embed for the second URL
     text = "I have two links: https://url-that-times-out.com and https://valid-url.com"
-    embed, facets = (
-        connection._generate_post_embed_and_facets(  # pylint: disable=protected-access
-            text
-        )
-    )
+    embed, facets = generate(text)
     assert embed is not None
     assert embed.external.uri == "https://valid-url.com"
     assert embed.external.title == "Valid URL"
@@ -619,34 +601,32 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
 
     test_did: str = MockAuthor().did
 
-    # Case: empty embed
-    assert (  # pylint: disable=protected-access
-        not connection._extract_media_list_from_embed(test_did, None)
+    extract = (
+        connection._extract_media_list_from_embed  # pylint: disable=protected-access
     )
 
+    # Case: empty embed
+    assert not extract(test_did, None)
+
     # Case: non-supported embeds
-    assert (  # pylint: disable=protected-access
-        not connection._extract_media_list_from_embed(
-            test_did,
-            AppBskyEmbedExternal.Main(
-                external=AppBskyEmbedExternal.External(
-                    uri="https://example.com",
-                    title="Example Title",
-                    description="Example Description",
-                )
-            ),
-        )
+    assert not extract(
+        test_did,
+        AppBskyEmbedExternal.Main(
+            external=AppBskyEmbedExternal.External(
+                uri="https://example.com",
+                title="Example Title",
+                description="Example Description",
+            )
+        ),
     )
-    assert (  # pylint: disable=protected-access
-        not connection._extract_media_list_from_embed(
-            test_did,
-            AppBskyEmbedRecord.Main(
-                record=ComAtprotoRepoStrongRef.Main(
-                    uri="at://example.com",
-                    cid="example_cid",
-                )
-            ),
-        )
+    assert not extract(
+        test_did,
+        AppBskyEmbedRecord.Main(
+            record=ComAtprotoRepoStrongRef.Main(
+                uri="at://example.com",
+                cid="example_cid",
+            )
+        ),
     )
 
     # Case: video embed
@@ -662,11 +642,7 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
             size=12345,
         ),
     )
-    media_list = (
-        connection._extract_media_list_from_embed(  # pylint: disable=protected-access
-            test_did, video_embed
-        )
-    )
+    media_list = extract(test_did, video_embed)
     assert len(media_list) == 1
     assert media_list[0].mime_type == "video/mp4"
     assert media_list[0].content == b"test data"
@@ -692,11 +668,7 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
             ),
         ],
     )
-    media_list = (
-        connection._extract_media_list_from_embed(  # pylint: disable=protected-access
-            test_did, image_embed
-        )
-    )
+    media_list = extract(test_did, image_embed)
     assert len(media_list) == 2
     assert media_list[0].mime_type == "image/jpeg"
     assert media_list[1].mime_type == "image/png"
@@ -713,12 +685,10 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
             size=12345,
         ),
     )
-    assert not connection._extract_media_list_from_embed(  # pylint: disable=protected-access # noqa: E501
-        test_did, video_embed
-    )
+    assert not extract(test_did, video_embed)
 
 
-def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fetch image by URL and upload as blob; handle failures."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
@@ -727,6 +697,10 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
         [ConnectionMode.WRITE],
         "test_handle",
         "test_password",
+    )
+
+    upload = (
+        conn._upload_external_thumb_blob_from_url  # pylint: disable=protected-access
     )
 
     # Case: Successful image retrieval and upload
@@ -744,11 +718,7 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
         ),
     )
 
-    blob_ref = (
-        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
-            "https://example.com/image.jpg"
-        )
-    )
+    blob_ref = upload("https://example.com/image.jpg")
     assert blob_ref is not None
     assert blob_ref.ref == "test_ref"
     assert blob_ref.mime_type == "image/jpeg"
@@ -759,12 +729,7 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
 
     monkeypatch.setattr("requests.get", mock_failed_request_get)
 
-    assert (
-        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
-            "https://example.com/bad-image.jpg"
-        )
-        is None
-    )
+    assert upload("https://example.com/bad-image.jpg") is None
 
     # Case: Successful image retrieval but failed upload
     monkeypatch.setattr(
@@ -775,11 +740,7 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
         lambda *_args, **_kwargs: (_ for _ in ()).throw(BadRequestError()),
     )
 
-    assert (
-        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
-            "https://example.com/image.jpg"
-        )
-    ) is None
+    assert upload("https://example.com/image.jpg") is None
 
     # Case: Successful retrieval, image is larger than Bluesky limit
     # and compression is disabled
@@ -788,28 +749,20 @@ def test_upload_image_url_to_atproto_blob(monkeypatch: pytest.MonkeyPatch) -> No
         "requests.get", lambda *args, **_kargs: MockResponse(large_image_data, 200)
     )
     conn.compress_images = False
-    assert (
-        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
-            "https://example.com/large-image.jpg"
-        )
-    ) is None
+    assert upload("https://example.com/large-image.jpg") is None
 
     # Case: successful retrieval, image is larger than Bluesky limit
     # and compression is enabled, but compression fails
     conn.compress_images = True
     monkeypatch.setattr(
-        "barkr.connections.bluesky.BlueskyConnection._compress_image",
+        "barkr.connections.bluesky.BlueskyConnection._compress_external_thumb_image",
         lambda *_args, **_kwargs: None,
     )
-    assert (
-        conn._upload_image_url_to_atproto_blob(  # pylint: disable=protected-access
-            "https://example.com/large-image.jpg"
-        )
-    ) is None
+    assert upload("https://example.com/large-image.jpg") is None
 
 
-def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Compress large images under Bluesky size limit when enabled."""
+def test_compress_external_thumb_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Compress large images under the link-card thumbnail blob size limit."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
     connection = BlueskyConnection(
         "BlueskyClass",
@@ -817,6 +770,10 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
         "test_handle",
         "test_password",
         compress_images=True,
+    )
+
+    compress = (
+        connection._compress_external_thumb_image  # pylint: disable=protected-access
     )
 
     def create_test_image(w: int, h: int) -> bytes:
@@ -828,20 +785,12 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
     small_image_data = create_test_image(100, 100)
     assert len(small_image_data) <= 1000000
 
-    result = connection._compress_image(  # pylint: disable=protected-access
-        small_image_data
-    )
+    result = compress(small_image_data)
     assert result is not None
     assert len(result) <= 1000000
 
     # Test case: Invalid image data
-    invalid_image_data = b"not an image"
-    assert (
-        connection._compress_image(  # pylint: disable=protected-access
-            invalid_image_data
-        )
-        is None
-    )
+    assert compress(b"not an image") is None
 
     # Test case: Image.open raises an exception
     def mock_image_open(*args, **kwargs):
@@ -849,11 +798,7 @@ def test_compress_image(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("PIL.Image.open", mock_image_open)
 
-    valid_image_data = create_test_image(500, 500)
-    assert (
-        connection._compress_image(valid_image_data)  # pylint: disable=protected-access
-        is None
-    )
+    assert compress(create_test_image(500, 500)) is None
 
 
 def test_bluesky_repost_as_most_recent_does_not_corrupt_min_id(
