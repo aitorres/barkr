@@ -49,12 +49,15 @@ def test_telegram_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     message_count: int = 0
 
-    def mock_send_message(*_args: Any, **_kwargs: Any) -> None:
+    def mock_send_message(coroutine: Any, *_args: Any, **_kwargs: Any) -> None:
         """
         Mock function to simulate sending a message
         """
         nonlocal message_count
         message_count += 1
+        close = getattr(coroutine, "close", None)
+        if callable(close):
+            close()
 
     monkeypatch.setattr("asyncio.run", mock_send_message)
 
