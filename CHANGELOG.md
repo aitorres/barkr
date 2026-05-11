@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.14.0] - 2026-05-11
+
+### Added
+
+- Connection queues and posted message ID collections are now bounded to prevent unlimited memory growth. Default bounds are large enough to not affect deduplication logic, and bounded structures are LRU to keep the most recent messages and connections in memory if the bounds are exceeded.
+
+### Changed
+
+- General refactors to reduce memory usage across the codebase:
+  - Reducing memory overhead of all classes and objects by using `__slots__` where possible.
+  - Maintaining messages queues in `deque` objects instead of lists, to prevent extra copies of the queues when adding and removing messages.
+- Refactored image compression logic on the Bluesky connection with early returns and less memory copies.
+- Expanded unit test coverage.
+- Removed warnings on test runs.
+
 ## [0.13.1] - 2026-05-10
 
 ### Added
