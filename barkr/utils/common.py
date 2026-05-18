@@ -1,5 +1,5 @@
 """
-Utility functions for the Barkr package.
+Shared non-image utility helpers for the Barkr package.
 """
 
 import re

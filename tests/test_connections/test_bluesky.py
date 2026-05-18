@@ -780,7 +780,7 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
     # and compression is enabled, but compression fails
     conn.compress_images = True
     monkeypatch.setattr(
-        "barkr.connections.bluesky.BlueskyConnection._compress_external_thumb_image",
+        "barkr.connections.bluesky.compress_image_to_size_limit",
         lambda *_args, **_kwargs: None,
     )
     assert upload("https://example.com/large-image.jpg") is None
@@ -806,46 +806,6 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
         ),
     )
     assert upload("https://example.com/not-image") is None
-
-
-def test_compress_external_thumb_image(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Compress large images under the link-card thumbnail blob size limit."""
-    _setup_bluesky_connection_monkeypatch(monkeypatch)
-    connection = BlueskyConnection(
-        "BlueskyClass",
-        [ConnectionMode.WRITE],
-        "test_handle",
-        "test_password",
-        compress_images=True,
-    )
-
-    compress = (
-        connection._compress_external_thumb_image  # pylint: disable=protected-access
-    )
-
-    def create_test_image(w: int, h: int) -> bytes:
-        output = io.BytesIO()
-        Image.new("RGB", (w, h), color="red").save(output, "JPEG", quality=95)
-        return output.getvalue()
-
-    # Test case: small-enough image, no compression needed
-    small_image_data = create_test_image(100, 100)
-    assert len(small_image_data) <= 1000000
-
-    result = compress(small_image_data)
-    assert result is not None
-    assert len(result) <= 1000000
-
-    # Test case: Invalid image data
-    assert compress(b"not an image") is None
-
-    # Test case: Image.open raises an exception
-    def mock_image_open(*args, **kwargs):
-        raise ValueError("Invalid image")
-
-    monkeypatch.setattr("PIL.Image.open", mock_image_open)
-
-    assert compress(create_test_image(500, 500)) is None
 
 
 def test_bluesky_repost_as_most_recent_does_not_corrupt_min_id(

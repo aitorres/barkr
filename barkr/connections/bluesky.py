@@ -4,10 +4,9 @@ supporting reading and writing statuses from the authenticated user
 via their handle and password.
 """
 
-import io
 import logging
 import time
-from typing import Any, Final, Optional, Union, cast
+from typing import Final, Optional, Union, cast
 from urllib.parse import urlparse
 
 import requests
@@ -35,7 +34,6 @@ from atproto_client.models.string_formats import Did
 from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace
 from bs4 import BeautifulSoup, Tag
 from httpx import Timeout
-from PIL import Image
 
 from barkr.connections.base import ConnectionMode, ThreadAwareConnection
 from barkr.models import (
@@ -50,6 +48,7 @@ from barkr.utils import (
     REQUESTS_HEADERS,
     extract_urls_from_text,
 )
+from barkr.utils.image import compress_image_to_size_limit, response_contains_image
 
 logger = logging.getLogger()
 
@@ -643,7 +642,7 @@ class BlueskyConnection(ThreadAwareConnection):
 
         # Bluesky requires thumb.mimeType to be image/* and will reject
         # payloads with other MIME types.
-        if not self._has_mime_image_type(response, img_data):
+        if not response_contains_image(response, img_data):
             logger.warning(
                 "Skipping thumbnail from %s because response is not a valid image",
                 image_url,
@@ -682,102 +681,15 @@ class BlueskyConnection(ThreadAwareConnection):
             image_url,
             len(img_data),
         )
-        compressed_img_data = self._compress_external_thumb_image(img_data)
+        compressed_img_data = compress_image_to_size_limit(
+            img_data,
+            BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES,
+        )
         if compressed_img_data is None:
             logger.warning("Failed to compress image from %s", image_url)
             return None
 
         return compressed_img_data
-
-    def _has_mime_image_type(self, response: Any, img_data: bytes) -> bool:
-        """
-        Best-effort image validation for external thumbnail responses.
-
-        We first trust an explicit ``image/*`` content type when present.
-        Otherwise we sniff bytes with Pillow to avoid uploading non-image
-        content that Bluesky may classify as ``*/*``.
-
-        :param response: HTTP response object from ``requests.get``
-        :param img_data: Response content bytes
-        :return: True if content appears to be a valid image payload
-        """
-
-        headers = getattr(response, "headers", {}) or {}
-        raw_content_type: str = headers.get("Content-Type", "")
-        content_type = raw_content_type.split(";", 1)[0].strip().lower()
-
-        if content_type.startswith("image/"):
-            return True
-
-        try:
-            with Image.open(io.BytesIO(img_data)) as img:
-                return img.format is not None
-        except Exception:  # pylint: disable=broad-except
-            return False
-
-    def _compress_external_thumb_image(self, img_data: bytes) -> Optional[bytes]:
-        """
-        Compress an image to fit within the Bluesky link-card thumbnail
-        blob size limit (``BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES``).
-        This is attempted by scaling down the image.
-
-        This method uses the Pillow library to handle image processing.
-        If compression fails, or the target size cannot be achieved,
-        None is returned. This will signal that no image should be uploaded.
-
-        :param img_data: The original image data in bytes
-        :return: Compressed image data if successful, None otherwise
-        """
-
-        try:
-            # Open the image to ensure it's valid
-            with Image.open(io.BytesIO(img_data)) as img:
-                # If the image is already smaller than the limit,
-                # no need to compress it further
-                if len(img_data) <= BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES:
-                    return img_data
-
-                # Resizing the image to fit within the size limit
-                original_width, original_height = img.size
-
-                for scale_factor in [0.8, 0.75]:
-                    new_width = int(original_width * scale_factor)
-                    new_height = int(original_height * scale_factor)
-
-                    with img.resize(
-                        (new_width, new_height), Image.Resampling.LANCZOS
-                    ) as resized_img:
-                        for quality in [85, 70]:
-                            with io.BytesIO() as output:
-                                resized_img.save(
-                                    output,
-                                    format="JPEG",
-                                    quality=quality,
-                                    optimize=True,
-                                )
-
-                                if (
-                                    output.tell()
-                                    <= BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES
-                                ):
-                                    compressed_data = output.getvalue()
-                                    logger.info(
-                                        "Compressed image to %d bytes using "
-                                        "resize=%dx%d and quality=%d",
-                                        len(compressed_data),
-                                        new_width,
-                                        new_height,
-                                        quality,
-                                    )
-                                    return compressed_data
-
-            # If we still can't compress enough, give up
-            logger.warning("Could not compress image to fit within size limit")
-            return None
-
-        except Exception as e:  # pylint: disable=broad-except
-            logger.warning("Error compressing image: %s", e)
-            return None
 
     def _set_min_id_from_user_feed(self) -> None:
         """

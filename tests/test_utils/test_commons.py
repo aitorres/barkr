@@ -1,5 +1,5 @@
 """
-Module containing unit tests for Barkr utility functions.
+Module containing unit tests for Barkr common utility functions.
 """
 
 from unittest.mock import MagicMock, patch
@@ -49,7 +49,7 @@ def test_wrap_while_true():
 
     wrapped_function = wrap_while_true(mock_callback, sleep_interval)
 
-    with patch("barkr.utils.sleep", side_effect=InterruptedError):
+    with patch("barkr.utils.common.sleep", side_effect=InterruptedError):
         try:
             wrapped_function()
         except InterruptedError:
