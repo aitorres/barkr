@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.14.3] - 2026-05-18
+
+### Fixed
+
+- Bluesky connection: fixed an issue where we'd attempt to upload an embed thumbnail with an invalid MIME type, causing the request to be rejected by Bluesky and the post to be published without the embed thumbnail.
+
+### Changed
+
+- Minor dependency updates
+
 ## [0.14.2] - 2026-05-11
 
 ### Fixed
