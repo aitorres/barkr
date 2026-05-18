@@ -3,7 +3,7 @@ Module to implement unit tests for the MessageAllowedReplies enum.
 """
 
 import pytest
-from atproto_client.models.app.bsky.feed.threadgate import (  # type: ignore
+from atproto_client.models.app.bsky.feed.threadgate import (
     FollowerRule,
     FollowingRule,
     MentionRule,
@@ -66,6 +66,7 @@ def test_message_allowed_replies_to_bluesky_threadgate() -> None:
         current_time,
     )
     assert record is not None
+    assert record.allow is not None
     assert len(record.allow) == 1
     assert isinstance(record.allow[0], FollowerRule)
 
@@ -80,6 +81,7 @@ def test_message_allowed_replies_to_bluesky_threadgate() -> None:
         current_time,
     )
     assert record is not None
+    assert record.allow is not None
     assert len(record.allow) == 3
     assert isinstance(record.allow[0], FollowerRule)
     assert isinstance(record.allow[1], FollowingRule)

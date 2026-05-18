@@ -4,19 +4,20 @@ Module to implement unit tests for the Bluesky connection class
 
 import io
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional, Union
 
 import pytest
-from atproto_client.exceptions import BadRequestError  # type: ignore
-from atproto_client.models import (  # type: ignore
+from atproto_client.exceptions import BadRequestError
+from atproto_client.models import (
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
     AppBskyEmbedRecord,
     AppBskyEmbedRecordWithMedia,
     AppBskyEmbedVideo,
+    AppBskyRichtextFacet,
     ComAtprotoRepoStrongRef,
 )
-from atproto_client.models.blob_ref import BlobRef  # type: ignore
+from atproto_client.models.blob_ref import BlobRef
 from bs4 import BeautifulSoup
 from PIL import Image
 from requests.exceptions import RequestException
@@ -80,7 +81,7 @@ class MockRecord:
 
     text: str
     reply: Optional[MockReply] = None
-    embed: Optional[MockExternalEmbed] = None
+    embed: Union[MockExternalEmbed, Any, None] = None
     langs: Optional[list[str]] = None
 
 
@@ -489,8 +490,10 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
     assert embed.external.uri == "https://valid-url.com"
     assert embed.external.title == "Valid URL"
     assert embed.external.description == "A valid URL description"
+    assert embed.external.thumb is not None
     assert embed.external.thumb.ref == "mock_blob_ref"
     assert len(facets) == 1
+    assert isinstance(facets[0].features[0], AppBskyRichtextFacet.Link)
     assert facets[0].features[0].uri == "https://valid-url.com"
 
     # Test case 2: Text with a URL that has no metadata
@@ -502,6 +505,7 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
     assert embed.external.description == "https://no-meta.com"
     assert embed.external.thumb is None
     assert len(facets) == 1
+    assert isinstance(facets[0].features[0], AppBskyRichtextFacet.Link)
     assert facets[0].features[0].uri == "https://no-meta.com"
 
     # Test case 3: Text with an invalid URL
@@ -516,7 +520,9 @@ def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None
     assert embed is not None
     assert embed.external.uri == "https://valid-url.com"
     assert len(facets) == 2
+    assert isinstance(facets[0].features[0], AppBskyRichtextFacet.Link)
     assert facets[0].features[0].uri == "https://valid-url.com"
+    assert isinstance(facets[1].features[0], AppBskyRichtextFacet.Link)
     assert facets[1].features[0].uri == "https://no-meta.com"
 
     # Test case 5: Text with no URLs
@@ -574,6 +580,7 @@ def test_generate_post_embed_and_facets_timeout_cases(
     embed, facets = generate(text)
     assert embed is None
     assert len(facets) == 1
+    assert isinstance(facets[0].features[0], AppBskyRichtextFacet.Link)
     assert facets[0].features[0].uri == "https://url-that-times-out.com"
 
     # Test case 2: the first URL times out, but the second one is valid
@@ -585,7 +592,9 @@ def test_generate_post_embed_and_facets_timeout_cases(
     assert embed.external.title == "Valid URL"
     assert embed.external.description == "A valid URL description"
 
+    assert isinstance(facets[0].features[0], AppBskyRichtextFacet.Link)
     assert facets[0].features[0].uri == "https://url-that-times-out.com"
+    assert isinstance(facets[1].features[0], AppBskyRichtextFacet.Link)
     assert facets[1].features[0].uri == "https://valid-url.com"
 
 

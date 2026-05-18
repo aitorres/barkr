@@ -6,8 +6,8 @@ who can reply to a message.
 from enum import Enum
 from typing import Optional, Union
 
-from atproto_client.models import AppBskyFeedThreadgate  # type: ignore
-from atproto_client.models.app.bsky.feed.threadgate import (  # type: ignore
+from atproto_client.models import AppBskyFeedThreadgate
+from atproto_client.models.app.bsky.feed.threadgate import (
     FollowerRule,
     FollowingRule,
     ListRule,

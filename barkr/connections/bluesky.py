@@ -7,7 +7,7 @@ via their handle and password.
 import io
 import logging
 import time
-from typing import Any, Final, Optional, Union
+from typing import Any, Final, Optional, Union, cast
 from urllib.parse import urlparse
 
 import requests
@@ -18,7 +18,7 @@ from atproto_client.exceptions import (
     RequestErrorBase,
     RequestException,
 )
-from atproto_client.models import (  # type: ignore
+from atproto_client.models import (
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
     AppBskyEmbedRecord,
@@ -26,12 +26,13 @@ from atproto_client.models import (  # type: ignore
     AppBskyEmbedVideo,
     AppBskyRichtextFacet,
 )
-from atproto_client.models.app.bsky.feed.defs import FeedViewPost  # type: ignore
-from atproto_client.models.app.bsky.feed.post import CreateRecordResponse  # type: ignore
-from atproto_client.models.blob_ref import BlobRef  # type: ignore
-from atproto_client.models.common import XrpcError  # type: ignore
-from atproto_client.models.string_formats import Did  # type: ignore
-from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace  # type: ignore
+from atproto_client.models.app.bsky.feed.defs import FeedViewPost
+from atproto_client.models.app.bsky.feed.post import CreateRecordResponse
+from atproto_client.models.app.bsky.feed.post import Record as PostRecord
+from atproto_client.models.blob_ref import BlobRef
+from atproto_client.models.common import XrpcError
+from atproto_client.models.string_formats import Did
+from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace
 from bs4 import BeautifulSoup, Tag
 from httpx import Timeout
 from PIL import Image
@@ -146,7 +147,7 @@ class BlueskyConnection(ThreadAwareConnection):
                     continue
 
                 if self.min_id is None or post.uri > self.min_id:
-                    record = post.record
+                    record = cast(PostRecord, post.record)
                     if (embed := record.embed) is not None:
                         if _is_quote_embed(embed):
                             continue
@@ -273,7 +274,7 @@ class BlueskyConnection(ThreadAwareConnection):
                     self.service.get_current_time_iso(),
                 )
 
-                if thread_gate_record:
+                if thread_gate_record and self.service.me is not None:
                     self.service.app.bsky.feed.threadgate.create(
                         self.service.me.did,
                         thread_gate_record,
@@ -423,7 +424,9 @@ class BlueskyConnection(ThreadAwareConnection):
             if response.status_code == 200:
                 # Parse the response to extract title, description and image
                 soup = BeautifulSoup(response.content, "html.parser")
-                title = soup.title.string if soup.title else urlparse(url).netloc
+                title = (soup.title.string if soup.title else None) or urlparse(
+                    url
+                ).netloc
                 description = url
                 thumbnail_blob = None
 
@@ -799,7 +802,7 @@ class BlueskyConnection(ThreadAwareConnection):
             self.min_id,
         )
 
-    def _get_user_feed_with_retry(self) -> Optional[FeedViewPost]:
+    def _get_user_feed_with_retry(self) -> Optional[list[FeedViewPost]]:
         """
         Fetches the Bluesky user feed to retrieve latest posts from the
         authenticated user. Uses an exponential backoff retry mechanism
@@ -810,9 +813,11 @@ class BlueskyConnection(ThreadAwareConnection):
 
         for attempt in range(BLUESKY_EXPONENTIAL_BACKOFF_RETRIES):
             try:
-                user_feed: FeedViewPost = self.service.app.bsky.feed.get_author_feed(
-                    {"actor": self.handle}
-                ).feed
+                user_feed: list[FeedViewPost] = (
+                    self.service.app.bsky.feed.get_author_feed(
+                        {"actor": self.handle}
+                    ).feed
+                )
 
                 if attempt > 0:
                     logger.info(
