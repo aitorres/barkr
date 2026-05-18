@@ -41,6 +41,7 @@ class MockResponse:
 
     content: bytes
     status_code: int
+    headers: Optional[dict[str, str]] = None
 
 
 @dataclass(frozen=True)
@@ -703,9 +704,19 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
         conn._upload_external_thumb_blob_from_url  # pylint: disable=protected-access
     )
 
+    def create_test_image_bytes() -> bytes:
+        output = io.BytesIO()
+        Image.new("RGB", (16, 16), color="red").save(output, "JPEG", quality=90)
+        return output.getvalue()
+
     # Case: Successful image retrieval and upload
     monkeypatch.setattr(
-        "requests.get", lambda *args, **_kargs: MockResponse(b"image_content", 200)
+        "requests.get",
+        lambda *args, **_kargs: MockResponse(
+            create_test_image_bytes(),
+            200,
+            headers={"Content-Type": "image/jpeg"},
+        ),
     )
     monkeypatch.setattr(
         "atproto_client.Client.upload_blob",
@@ -733,7 +744,12 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
 
     # Case: Successful image retrieval but failed upload
     monkeypatch.setattr(
-        "requests.get", lambda *args, **_kargs: MockResponse(b"image_content", 200)
+        "requests.get",
+        lambda *args, **_kargs: MockResponse(
+            create_test_image_bytes(),
+            200,
+            headers={"Content-Type": "image/jpeg"},
+        ),
     )
     monkeypatch.setattr(
         "atproto_client.Client.upload_blob",
@@ -759,6 +775,28 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
         lambda *_args, **_kwargs: None,
     )
     assert upload("https://example.com/large-image.jpg") is None
+
+    # Case: non-200 image URL should be skipped
+    monkeypatch.setattr(
+        "requests.get",
+        lambda *args, **_kargs: MockResponse(
+            create_test_image_bytes(),
+            404,
+            headers={"Content-Type": "image/jpeg"},
+        ),
+    )
+    assert upload("https://example.com/not-found.jpg") is None
+
+    # Case: non-image payload should be skipped (prevents */* mimeType uploads)
+    monkeypatch.setattr(
+        "requests.get",
+        lambda *args, **_kargs: MockResponse(
+            b"<html><body>not an image</body></html>",
+            200,
+            headers={"Content-Type": "text/html"},
+        ),
+    )
+    assert upload("https://example.com/not-image") is None
 
 
 def test_compress_external_thumb_image(monkeypatch: pytest.MonkeyPatch) -> None:

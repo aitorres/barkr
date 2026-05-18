@@ -7,7 +7,7 @@ via their handle and password.
 import io
 import logging
 import time
-from typing import Final, Optional, Union
+from typing import Any, Final, Optional, Union
 from urllib.parse import urlparse
 
 import requests
@@ -596,44 +596,121 @@ class BlueskyConnection(ThreadAwareConnection):
         :return: The BlobRef object referencing the uploaded image blob
         """
 
-        try:
-            img_data = requests.get(
-                image_url,
-                timeout=REQUESTS_EMBED_GET_TIMEOUT,
-                headers=REQUESTS_HEADERS,
-            ).content
-        except requests.RequestException as e:
-            logger.warning("Failed to fetch image from %s: %s", image_url, e)
+        img_data = self._fetch_valid_external_thumb_data(image_url)
+        if img_data is None:
             return None
 
-        # Check if image needs compression
-        if len(img_data) > BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES:
-            if not self.compress_images:
-                logger.warning(
-                    "Image from %s (%d bytes) exceeds limit (%d bytes), "
-                    "compression disabled for Bluesky (%s), skipping upload",
-                    image_url,
-                    len(img_data),
-                    BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES,
-                    self.name,
-                )
-                return None
-
-            logger.debug(
-                "Image from %s (%d bytes) exceeds limit, compressing",
-                image_url,
-                len(img_data),
-            )
-            img_data = self._compress_external_thumb_image(img_data)
-            if img_data is None:
-                logger.warning("Failed to compress image from %s", image_url)
-                return None
+        img_data = self._prepare_external_thumb_size(image_url, img_data)
+        if img_data is None:
+            return None
 
         try:
             return self.service.upload_blob(img_data).blob
         except BLUESKY_HANDLED_EXCEPTIONS as e:
             logger.warning("Failed to upload image to Bluesky (%s): %s", self.name, e)
             return None
+
+    def _fetch_valid_external_thumb_data(self, image_url: str) -> Optional[bytes]:
+        """
+        Fetch external thumbnail bytes and verify they are a valid image payload.
+
+        :param image_url: The URL to fetch
+        :return: Raw image bytes if valid, otherwise None
+        """
+
+        try:
+            response = requests.get(
+                image_url,
+                timeout=REQUESTS_EMBED_GET_TIMEOUT,
+                headers=REQUESTS_HEADERS,
+            )
+        except requests.RequestException as e:
+            logger.warning("Failed to fetch image from %s: %s", image_url, e)
+            return None
+
+        if response.status_code != 200:
+            logger.warning(
+                "Failed to fetch image from %s: HTTP %s",
+                image_url,
+                response.status_code,
+            )
+            return None
+
+        img_data = response.content
+
+        # Bluesky requires thumb.mimeType to be image/* and will reject
+        # payloads with other MIME types.
+        if not self._has_mime_image_type(response, img_data):
+            logger.warning(
+                "Skipping thumbnail from %s because response is not a valid image",
+                image_url,
+            )
+            return None
+
+        return img_data
+
+    def _prepare_external_thumb_size(
+        self, image_url: str, img_data: bytes
+    ) -> Optional[bytes]:
+        """
+        Enforce external thumbnail blob size constraints, compressing when enabled.
+
+        :param image_url: Original thumbnail URL (for logging)
+        :param img_data: Thumbnail bytes
+        :return: Size-compliant bytes, or None if constraints cannot be met
+        """
+
+        if len(img_data) <= BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES:
+            return img_data
+
+        if not self.compress_images:
+            logger.warning(
+                "Image from %s (%d bytes) exceeds limit (%d bytes), "
+                "compression disabled for Bluesky (%s), skipping upload",
+                image_url,
+                len(img_data),
+                BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES,
+                self.name,
+            )
+            return None
+
+        logger.debug(
+            "Image from %s (%d bytes) exceeds limit, compressing",
+            image_url,
+            len(img_data),
+        )
+        compressed_img_data = self._compress_external_thumb_image(img_data)
+        if compressed_img_data is None:
+            logger.warning("Failed to compress image from %s", image_url)
+            return None
+
+        return compressed_img_data
+
+    def _has_mime_image_type(self, response: Any, img_data: bytes) -> bool:
+        """
+        Best-effort image validation for external thumbnail responses.
+
+        We first trust an explicit ``image/*`` content type when present.
+        Otherwise we sniff bytes with Pillow to avoid uploading non-image
+        content that Bluesky may classify as ``*/*``.
+
+        :param response: HTTP response object from ``requests.get``
+        :param img_data: Response content bytes
+        :return: True if content appears to be a valid image payload
+        """
+
+        headers = getattr(response, "headers", {}) or {}
+        raw_content_type: str = headers.get("Content-Type", "")
+        content_type = raw_content_type.split(";", 1)[0].strip().lower()
+
+        if content_type.startswith("image/"):
+            return True
+
+        try:
+            with Image.open(io.BytesIO(img_data)) as img:
+                return img.format is not None
+        except Exception:  # pylint: disable=broad-except
+            return False
 
     def _compress_external_thumb_image(self, img_data: bytes) -> Optional[bytes]:
         """
