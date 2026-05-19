@@ -9,7 +9,11 @@ from typing import Optional
 import pytest
 from PIL import Image
 
-from barkr.utils.image import compress_image_to_size_limit, response_contains_image
+from barkr.utils.image import (
+    _convert_image_for_jpeg,
+    compress_image_to_size_limit,
+    response_contains_image,
+)
 
 
 @dataclass(frozen=True)
@@ -100,3 +104,93 @@ def test_compress_image_to_size_limit_returns_none_on_image_open_error(
 
     monkeypatch.setattr("barkr.utils.image.Image.open", mock_image_open)
     assert compress_image_to_size_limit(b"bad image", 1000) is None
+
+
+def test_compress_image_to_size_limit_success_compresses_rgb_image() -> None:
+    """Compression should succeed and return bytes within the target size."""
+
+    # BMP is uncompressed, guaranteeing img_data is large enough to exceed the limit
+    output = io.BytesIO()
+    Image.new("RGB", (200, 200), color="blue").save(output, "BMP")
+    original_data = output.getvalue()
+
+    # BMP of 200x200 RGB is ~120 KB; target 5 KB is reachable by JPEG encoding
+    result = compress_image_to_size_limit(
+        original_data,
+        size_limit_bytes=5_000,
+        scale_factors=(0.5,),
+        quality_steps=(70,),
+    )
+
+    assert result is not None
+    assert len(result) <= 5_000
+
+
+def test_compress_image_to_size_limit_success_compresses_rgba_image() -> None:
+    """Compression should succeed for RGBA images, closing the converted copy."""
+
+    output = io.BytesIO()
+    # PNG preserves RGBA mode on re-open; use a large tiled pattern so
+    # the uncompressed source clearly exceeds the target limit
+    img = Image.new("RGBA", (300, 300))
+    for x in range(300):
+        for y in range(300):
+            img.putpixel((x, y), (x % 256, y % 256, (x + y) % 256, 200))
+    img.save(output, "PNG")
+    original_data = output.getvalue()
+
+    result = compress_image_to_size_limit(
+        original_data,
+        size_limit_bytes=5_000,
+        scale_factors=(0.5,),
+        quality_steps=(70,),
+    )
+
+    assert result is not None
+    assert len(result) <= 5_000
+
+
+def test_compress_image_to_size_limit_rgba_mode_conversion_close_on_exhaustion() -> (
+    None
+):
+    """When all compression attempts fail the converted RGB copy must be closed."""
+
+    output = io.BytesIO()
+    img = Image.new("RGBA", (100, 100), color=(100, 150, 200, 180))
+    img.save(output, "PNG")
+    original_data = output.getvalue()
+
+    # target size is too small to be reached
+    result = compress_image_to_size_limit(
+        original_data,
+        size_limit_bytes=1,
+        scale_factors=(0.5,),
+        quality_steps=(85,),
+    )
+
+    assert result is None
+
+
+def test_convert_image_for_jpeg_returns_same_object_for_rgb() -> None:
+    """RGB images should be returned as-is without conversion."""
+    image = Image.new("RGB", (16, 16), color="red")
+    assert _convert_image_for_jpeg(image) is image
+    image.close()
+
+
+def test_convert_image_for_jpeg_returns_same_object_for_grayscale() -> None:
+    """L-mode (grayscale) images should be returned as-is without conversion."""
+    image = Image.new("L", (16, 16), color=128)
+    assert _convert_image_for_jpeg(image) is image
+    image.close()
+
+
+def test_convert_image_for_jpeg_converts_rgba_to_rgb() -> None:
+    """Non-RGB/L images should be composited onto a white RGB background."""
+    image = Image.new("RGBA", (16, 16), color=(255, 0, 0, 128))
+    converted = _convert_image_for_jpeg(image)
+    assert converted is not image
+    assert converted.mode == "RGB"
+    assert converted.size == image.size
+    converted.close()
+    image.close()

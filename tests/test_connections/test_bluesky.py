@@ -3,8 +3,6 @@ Module to implement unit tests for the Bluesky connection class
 """
 
 import io
-from dataclasses import dataclass
-from typing import Any, Optional, Union
 
 import pytest
 from atproto_client.exceptions import BadRequestError
@@ -27,103 +25,20 @@ from barkr.connections.bluesky import (
     _get_meta_tag_from_html_metadata,
     _is_quote_embed,
 )
-
-
-@dataclass(frozen=True)
-class MockUploadBlobResponse:
-    """Mock response for Client.upload_blob."""
-
-    blob: BlobRef
-
-
-@dataclass(frozen=True)
-class MockResponse:
-    """Minimal HTTP response mock (content + status)."""
-
-    content: bytes
-    status_code: int
-    headers: Optional[dict[str, str]] = None
-
-
-@dataclass(frozen=True)
-class MockExternal:
-    """Represents a Bluesky external embed payload."""
-
-    title: str
-    uri: str
-    description: str
-
-
-@dataclass(frozen=True)
-class MockExternalEmbed:
-    """Container for external embed in mocked posts."""
-
-    external: Optional[MockExternal] = None
-
-
-@dataclass(frozen=True)
-class MockReplyParent:
-    """Mock reply parent with URI."""
-
-    uri: str
-
-
-@dataclass(frozen=True)
-class MockReply:
-    """Mock reply structure with parent."""
-
-    parent: MockReplyParent
-
-
-@dataclass(frozen=True)
-class MockRecord:
-    """Mock Bluesky record with text, reply, embed and langs."""
-
-    text: str
-    reply: Optional[MockReply] = None
-    embed: Union[MockExternalEmbed, Any, None] = None
-    langs: Optional[list[str]] = None
-
-
-@dataclass(frozen=True)
-class MockViewer:
-    """Mock viewer info; only 'repost' is relevant here."""
-
-    # NOTE: this is not a string in the real contract, but enough
-    # for our tests
-    repost: Optional[str] = None
-
-
-@dataclass(frozen=True)
-class MockAuthor:
-    """Mock author with a default DID."""
-
-    did: str = "did:plc:z72i7hdynmk6r22z27h6tvur"
-
-
-@dataclass(frozen=True)
-class MockPostData:
-    """Post wrapper carrying indexed_at, record, author and viewer."""
-
-    indexed_at: str
-    record: MockRecord
-    uri: str = "at://did:plc:test/app.bsky.feed.post/testid123"
-    author: MockAuthor = MockAuthor()
-    viewer: Optional[MockViewer] = None
-
-
-@dataclass(frozen=True)
-class MockPost:
-    """Envelope for a single feed item."""
-
-    post: MockPostData
-
-
-@dataclass(frozen=True)
-class MockFeed:
-    """Feed response containing a list of posts."""
-
-    feed: list[MockPost]
+from tests.mocks.bluesky import (
+    MockAuthor,
+    MockExternal,
+    MockExternalEmbed,
+    MockFeed,
+    MockPost,
+    MockPostData,
+    MockRecord,
+    MockReply,
+    MockReplyParent,
+    MockResponse,
+    MockUploadBlobResponse,
+    MockViewer,
+)
 
 
 def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -698,6 +613,48 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not extract(test_did, video_embed)
 
 
+def test_process_text_with_embed_returns_original_when_not_expandable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Leave text untouched when embed is missing, unsupported, or unmatched."""
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+
+    connection = BlueskyConnection(
+        "BlueskyClass",
+        [ConnectionMode.READ],
+        "test_handle",
+        "test_password",
+    )
+
+    process = connection._process_text_with_embed  # pylint: disable=protected-access
+
+    original_text = "zzqv zzqx zzqy"
+    assert process(original_text, None) == original_text
+
+    unsupported_embed = AppBskyEmbedImages.Main(
+        images=[
+            AppBskyEmbedImages.Image(
+                alt="Image 1",
+                image=BlobRef(
+                    ref="bafkreihash",
+                    mimeType="image/jpeg",
+                    size=12345,
+                ),
+            )
+        ]
+    )
+    assert process(original_text, unsupported_embed) == original_text
+
+    external_embed = AppBskyEmbedExternal.Main(
+        external=AppBskyEmbedExternal.External(
+            uri="https://example.com/fully-different-link",
+            title="Example",
+            description="Example",
+        )
+    )
+    assert process(original_text, external_embed) == original_text
+
+
 def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fetch image by URL and upload as blob; handle failures."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
@@ -806,6 +763,94 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
         ),
     )
     assert upload("https://example.com/not-image") is None
+
+
+def test_bluesky_feed_retry_and_min_id_helpers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Retry author feed fetches and keep min_id aligned with non-repost posts."""
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+
+    connection = BlueskyConnection(
+        "BlueskyClass",
+        [ConnectionMode.READ],
+        "test_handle",
+        "test_password",
+    )
+
+    sleep_delays: list[float] = []
+    monkeypatch.setattr("time.sleep", sleep_delays.append)
+
+    feed_calls = 0
+
+    def mock_get_author_feed(*_args, **_kwargs):
+        nonlocal feed_calls
+        feed_calls += 1
+        if feed_calls < 3:
+            raise BadRequestError()
+
+        return MockFeed(
+            [
+                MockPost(
+                    MockPostData(
+                        "2000-10-31T01:30:00.000-05:00",
+                        MockRecord("Recovered post"),
+                        uri="at://did:plc:test/app.bsky.feed.post/recovered",
+                    )
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        mock_get_author_feed,
+    )
+
+    user_feed = (
+        connection._get_user_feed_with_retry()  # pylint: disable=protected-access
+    )
+    assert user_feed is not None
+    assert len(user_feed) == 1
+    assert sleep_delays == [0.1, 0.2]
+
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(BadRequestError()),
+    )
+    sleep_delays.clear()
+    assert (  # pylint: disable=protected-access
+        connection._get_user_feed_with_retry() is None
+    )
+    assert sleep_delays == [0.1, 0.2]
+
+    repost_only_feed = [
+        MockPost(
+            MockPostData(
+                "2000-10-31T02:30:00.000-05:00",
+                MockRecord("Repost only"),
+                uri="at://did:plc:foreign/app.bsky.feed.post/repost",
+                viewer=MockViewer(repost="repost-ref"),
+            )
+        )
+    ]
+
+    connection.min_id = "at://did:plc:test/app.bsky.feed.post/original"
+    monkeypatch.setattr(
+        BlueskyConnection,
+        "_get_user_feed_with_retry",
+        lambda *_args: repost_only_feed,
+    )
+    connection._set_min_id_from_user_feed()  # pylint: disable=protected-access
+    assert connection.min_id is None
+
+    connection.min_id = "at://did:plc:test/app.bsky.feed.post/original"
+    monkeypatch.setattr(
+        BlueskyConnection,
+        "_get_user_feed_with_retry",
+        lambda *_args: None,
+    )
+    connection._set_min_id_from_user_feed()  # pylint: disable=protected-access
+    assert connection.min_id is None
 
 
 def test_bluesky_repost_as_most_recent_does_not_corrupt_min_id(
