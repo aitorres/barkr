@@ -5,7 +5,7 @@ Module to implement unit tests for the Bluesky connection class
 import io
 
 import pytest
-from atproto_client.exceptions import BadRequestError
+from atproto_client.exceptions import BadRequestError, NetworkError
 from atproto_client.models import (
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
@@ -25,6 +25,7 @@ from barkr.connections.bluesky import (
     _get_meta_tag_from_html_metadata,
     _is_quote_embed,
 )
+from barkr.models import Message
 from tests.mocks.bluesky import (
     MockAuthor,
     MockExternal,
@@ -44,13 +45,7 @@ from tests.mocks.bluesky import (
 def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     """Basic end-to-end reads and filtering behavior."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
-
-    bluesky_no_initial_messages = BlueskyConnection(
-        "BlueskyClass",
-        [ConnectionMode.READ, ConnectionMode.WRITE],
-        "test_handle",
-        "test_password",
-    )
+    bluesky_no_initial_messages = _create_test_bluesky_connection()
     assert bluesky_no_initial_messages.name == "BlueskyClass"
     assert bluesky_no_initial_messages.min_id is None
 
@@ -76,12 +71,7 @@ def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:
         ),
     )
 
-    bluesky = BlueskyConnection(
-        "BlueskyClass",
-        [ConnectionMode.READ, ConnectionMode.WRITE],
-        "test_handle",
-        "test_password",
-    )
+    bluesky = _create_test_bluesky_connection()
     assert bluesky.min_id == "at://did:plc:test/app.bsky.feed.post/3jzfcijpj2z2b"
 
     monkeypatch.setattr(
@@ -236,13 +226,7 @@ def test_bluesky_reconstructs_embeds_successfully(
     original_isinstance = isinstance
 
     _setup_bluesky_connection_monkeypatch(monkeypatch)
-
-    bsky = BlueskyConnection(
-        "BlueskyClass",
-        [ConnectionMode.READ],
-        "test_handle",
-        "test_password",
-    )
+    bsky = _create_test_bluesky_connection()
 
     monkeypatch.setattr(
         "builtins.isinstance",
@@ -357,13 +341,7 @@ def test_get_meta_tag_from_html_metadata() -> None:
 def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None:
     """Generate external embed and URL facets from text."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
-
-    connection = BlueskyConnection(
-        "BlueskyClass",
-        [ConnectionMode.WRITE],
-        "test_handle",
-        "test_password",
-    )
+    connection = _create_test_bluesky_connection()
 
     def mock_requests_get(url: str, *_args, **_kwargs):
         if "valid-url.com" in url:
@@ -452,13 +430,7 @@ def test_generate_post_embed_and_facets_timeout_cases(
 ) -> None:
     """Recover facets despite metadata timeouts; embed if later URL works."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
-
-    connection = BlueskyConnection(
-        "BlueskyClass",
-        [ConnectionMode.WRITE],
-        "test_handle",
-        "test_password",
-    )
+    connection = _create_test_bluesky_connection()
 
     def mock_upload_external_thumb_blob_from_url(_self, image_url: str):
         if "valid-url.com/image.jpg" in image_url:
@@ -516,13 +488,7 @@ def test_generate_post_embed_and_facets_timeout_cases(
 def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
     """Extract media bytes and types from supported embed variants."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
-
-    connection = BlueskyConnection(
-        "BlueskyClass",
-        [ConnectionMode.READ, ConnectionMode.WRITE],
-        "test_handle",
-        "test_password",
-    )
+    connection = _create_test_bluesky_connection()
 
     test_did: str = MockAuthor().did
 
@@ -659,12 +625,7 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
     """Fetch image by URL and upload as blob; handle failures."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
 
-    conn = BlueskyConnection(
-        "BlueskyClass",
-        [ConnectionMode.WRITE],
-        "test_handle",
-        "test_password",
-    )
+    conn = _create_test_bluesky_connection()
 
     upload = (
         conn._upload_external_thumb_blob_from_url  # pylint: disable=protected-access
@@ -675,14 +636,17 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
         Image.new("RGB", (16, 16), color="red").save(output, "JPEG", quality=90)
         return output.getvalue()
 
+    def valid_image_response(response_code: int) -> MockResponse:
+        return MockResponse(
+            create_test_image_bytes(),
+            response_code,
+            headers={"Content-Type": "image/jpeg"},
+        )
+
     # Case: Successful image retrieval and upload
     monkeypatch.setattr(
         "requests.get",
-        lambda *args, **_kargs: MockResponse(
-            create_test_image_bytes(),
-            200,
-            headers={"Content-Type": "image/jpeg"},
-        ),
+        lambda *args, **_kargs: valid_image_response(200),
     )
     monkeypatch.setattr(
         "atproto_client.Client.upload_blob",
@@ -710,12 +674,7 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
 
     # Case: Successful image retrieval but failed upload
     monkeypatch.setattr(
-        "requests.get",
-        lambda *args, **_kargs: MockResponse(
-            create_test_image_bytes(),
-            200,
-            headers={"Content-Type": "image/jpeg"},
-        ),
+        "requests.get", lambda *args, **_kargs: valid_image_response(200)
     )
     monkeypatch.setattr(
         "atproto_client.Client.upload_blob",
@@ -744,12 +703,7 @@ def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) ->
 
     # Case: non-200 image URL should be skipped
     monkeypatch.setattr(
-        "requests.get",
-        lambda *args, **_kargs: MockResponse(
-            create_test_image_bytes(),
-            404,
-            headers={"Content-Type": "image/jpeg"},
-        ),
+        "requests.get", lambda *args, **_kargs: valid_image_response(404)
     )
     assert upload("https://example.com/not-found.jpg") is None
 
@@ -781,13 +735,14 @@ def test_bluesky_feed_retry_and_min_id_helpers(
     sleep_delays: list[float] = []
     monkeypatch.setattr("time.sleep", sleep_delays.append)
 
+    transient_errors = [NetworkError(), BadRequestError()]
     feed_calls = 0
 
     def mock_get_author_feed(*_args, **_kwargs):
         nonlocal feed_calls
         feed_calls += 1
-        if feed_calls < 3:
-            raise BadRequestError()
+        if feed_calls <= len(transient_errors):
+            raise transient_errors[feed_calls - 1]
 
         return MockFeed(
             [
@@ -926,6 +881,45 @@ def test_bluesky_repost_as_most_recent_does_not_corrupt_min_id(
     assert len(messages) == 0
 
 
+def test_bluesky_post_recovers_from_network_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A NetworkError (e.g., DNS failure) during send_post should be swallowed
+    so the connection can keep running. min_id must be refreshed from the feed
+    in case the post actually went through before the network dropped."""
+
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+    bluesky = _create_test_bluesky_connection()
+
+    def raise_network_error(*_args, **_kwargs):
+        raise NetworkError("Temporary failure in name resolution")
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.send_post", raise_network_error
+    )
+
+    set_min_id_calls: list[bool] = []
+    monkeypatch.setattr(
+        BlueskyConnection,
+        "_set_min_id_from_user_feed",
+        lambda self: set_min_id_calls.append(True),
+    )
+
+    posted = bluesky._post(  # pylint: disable=protected-access
+        [
+            Message(
+                id="ForeignId1", message="test message 1", source_connection="test"
+            ),
+            Message(
+                id="ForeignId2", message="test message 2", source_connection="test"
+            ),
+        ]
+    )
+
+    assert not posted
+    assert set_min_id_calls == [True, True]
+
+
 def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
     """Common monkeypatches to avoid real API calls."""
     monkeypatch.setattr(
@@ -993,3 +987,13 @@ def test_is_quote_embed() -> None:
         media=images_embed,
     )
     assert _is_quote_embed(record_with_media_embed) is True
+
+
+def _create_test_bluesky_connection() -> BlueskyConnection:
+    """Returns a valid instance of BlueskyConnection for tests"""
+    return BlueskyConnection(
+        "BlueskyClass",
+        [ConnectionMode.READ, ConnectionMode.WRITE],
+        "test_handle",
+        "test_password",
+    )

@@ -80,6 +80,9 @@ line_length = 90
 warn_return_any = true
 warn_unused_configs = true
 
+[tool.black]
+target-version = ["py310"]
+
 [[tool.mypy.overrides]]
 module = ["tweepy.*", "atproto.*", "atproto_client.*", "feedparser.*"]
 follow_untyped_imports = true

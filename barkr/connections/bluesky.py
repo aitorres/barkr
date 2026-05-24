@@ -14,6 +14,7 @@ from atproto import AtUri, Client, Request
 from atproto_client.exceptions import (
     BadRequestError,
     InvokeTimeoutError,
+    NetworkError,
     RequestErrorBase,
     RequestException,
 )
@@ -60,6 +61,7 @@ BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY: Final[float] = 0.1  # 100ms
 BLUESKY_REQUEST_TIMEOUT: Final[int] = 15  # seconds
 BLUESKY_HANDLED_EXCEPTIONS: Final[tuple[type[RequestErrorBase], ...]] = (
     InvokeTimeoutError,
+    NetworkError,
     BadRequestError,
     RequestException,
 )
@@ -226,10 +228,14 @@ class BlueskyConnection(ThreadAwareConnection):
                     facets=facets if facets else None,
                     langs=language,
                 )
-            except InvokeTimeoutError as e:
-                # Something happened with the Bluesky API, let's recover
+            except NetworkError as e:
+                # Something happened with the Bluesky API (timeout, DNS failure,
+                # connection drop, etc.), let's recover
                 logger.error(
-                    "Bluesky (%s) post failed with timeout error: %s", self.name, str(e)
+                    "Bluesky (%s) post failed with network error: %s | %s",
+                    self.name,
+                    str(e),
+                    e.response if hasattr(e, "response") else "no response",
                 )
 
                 # In case we _did_ post the message, update min_id from the feed
