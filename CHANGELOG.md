@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.14.4] - 2026-05-26
+
+### Changed
+
+- Bluesky connection: network error handlers now gracefully handle generic network errors to account for a broader range of issues.
+- Minor refactor to split image and back-off related logic across connections
+- Test improvements
+- Minor dependency updates
+
 ## [0.14.3] - 2026-05-18
 
 ### Fixed
