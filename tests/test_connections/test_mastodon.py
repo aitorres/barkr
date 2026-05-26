@@ -422,6 +422,9 @@ def test_mastodon_handles_retries(monkeypatch: pytest.MonkeyPatch) -> None:
     posted_messages: list[str] = []
     current_attempts: int = 0
     total_attempts: int = 0
+    sleep_delays: list[float] = []
+
+    monkeypatch.setattr("barkr.connections.mastodon.sleep", sleep_delays.append)
 
     def status_post_mockup(_, message: str, *_args, **_kwargs) -> dict[str, Any]:
         nonlocal current_attempts
@@ -456,6 +459,7 @@ def test_mastodon_handles_retries(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mastodon.posted_message_ids == {"12121212", "23232323"}
     assert current_attempts == 0
     assert total_attempts == 6
+    assert sleep_delays == [0.1, 0.2, 0.1, 0.2]
 
 
 def test_mastodon_handles_retries_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -486,6 +490,8 @@ def test_mastodon_handles_retries_failure(monkeypatch: pytest.MonkeyPatch) -> No
     assert mastodon.posted_message_ids == set()
 
     total_attempts: int = 0
+
+    monkeypatch.setattr("barkr.connections.mastodon.sleep", lambda _delay: None)
 
     def status_post_mockup(_, _message: str, *_args, **_kwargs) -> dict[str, Any]:
         nonlocal total_attempts

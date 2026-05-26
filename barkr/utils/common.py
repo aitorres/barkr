@@ -8,6 +8,9 @@ from typing import Any, Callable, Final
 
 REQUESTS_EMBED_GET_TIMEOUT: Final[int] = 3
 
+EXPONENTIAL_BACKOFF_RETRIES: Final[int] = 3
+EXPONENTIAL_BACKOFF_BASE_DELAY: Final[float] = 0.1  # 100ms
+
 REQUESTS_HEADERS: Final[dict[str, str]] = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:20.0) Gecko/20100101 Firefox/20.0"

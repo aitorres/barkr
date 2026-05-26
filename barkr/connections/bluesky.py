@@ -45,6 +45,8 @@ from barkr.models import (
     MessageType,
 )
 from barkr.utils import (
+    EXPONENTIAL_BACKOFF_BASE_DELAY,
+    EXPONENTIAL_BACKOFF_RETRIES,
     REQUESTS_EMBED_GET_TIMEOUT,
     REQUESTS_HEADERS,
     extract_urls_from_text,
@@ -56,8 +58,6 @@ logger = logging.getLogger()
 BLUESKY_MAX_MESSAGE_LENGTH: Final[int] = 300
 # NOTE: blob size limit is different than post image size limit
 BLUESKY_MAX_EXTERNAL_THUMB_BLOB_SIZE_BYTES: Final[int] = 1000000
-BLUESKY_EXPONENTIAL_BACKOFF_RETRIES: Final[int] = 3
-BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY: Final[float] = 0.1  # 100ms
 BLUESKY_REQUEST_TIMEOUT: Final[int] = 15  # seconds
 BLUESKY_HANDLED_EXCEPTIONS: Final[tuple[type[RequestErrorBase], ...]] = (
     InvokeTimeoutError,
@@ -729,7 +729,7 @@ class BlueskyConnection(ThreadAwareConnection):
         :return: The author feed if successful, None if all retries fail
         """
 
-        for attempt in range(BLUESKY_EXPONENTIAL_BACKOFF_RETRIES):
+        for attempt in range(EXPONENTIAL_BACKOFF_RETRIES):
             try:
                 user_feed: list[FeedViewPost] = (
                     self.service.app.bsky.feed.get_author_feed(
@@ -747,17 +747,17 @@ class BlueskyConnection(ThreadAwareConnection):
 
                 return user_feed
             except BLUESKY_HANDLED_EXCEPTIONS as e:
-                if attempt >= BLUESKY_EXPONENTIAL_BACKOFF_RETRIES - 1:
+                if attempt >= EXPONENTIAL_BACKOFF_RETRIES - 1:
                     logger.error(
                         "Failed to fetch author feed for Bluesky (%s) "
                         "after %d attempts: %s",
                         self.name,
-                        BLUESKY_EXPONENTIAL_BACKOFF_RETRIES,
+                        EXPONENTIAL_BACKOFF_RETRIES,
                         str(e),
                     )
                     break
 
-                delay = BLUESKY_EXPONENTIAL_BACKOFF_BASE_DELAY * (2**attempt)
+                delay = EXPONENTIAL_BACKOFF_BASE_DELAY * (2**attempt)
                 logger.warning(
                     "Attempt %d to fetch author feed for Bluesky (%s) failed: %s. "
                     "Retrying in %.2f seconds...",

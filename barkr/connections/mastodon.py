@@ -6,6 +6,7 @@ via their access token.
 
 import logging
 import mimetypes
+from time import sleep
 from typing import Any, Final, Optional
 
 import requests
@@ -18,11 +19,15 @@ from requests.exceptions import RequestException
 from barkr.connections.base import ConnectionMode, ThreadAwareConnection
 from barkr.models import Media, Message, MessageMetadata, MessageType
 from barkr.models.message import MessageVisibility
-from barkr.utils import REQUESTS_EMBED_GET_TIMEOUT, REQUESTS_HEADERS
+from barkr.utils import (
+    EXPONENTIAL_BACKOFF_BASE_DELAY,
+    EXPONENTIAL_BACKOFF_RETRIES,
+    REQUESTS_EMBED_GET_TIMEOUT,
+    REQUESTS_HEADERS,
+)
 
 logger = logging.getLogger()
 
-MASTODON_WRITE_RETRIES: Final[int] = 3
 MASTODON_MAX_MEDIA_BYTES: Final[int] = 40 * 1024 * 1024  # 40 MB
 
 
@@ -165,7 +170,7 @@ class MastodonConnection(ThreadAwareConnection):
 
             media_list = _post_media_list_to_mastodon(self.service, message.media)
 
-            while attempts < MASTODON_WRITE_RETRIES:
+            while attempts < EXPONENTIAL_BACKOFF_RETRIES:
                 try:
                     posted_message = self.service.status_post(
                         message.message,
@@ -176,20 +181,23 @@ class MastodonConnection(ThreadAwareConnection):
                         in_reply_to_id=in_reply_to_id,
                     )
                 except MastodonNetworkError as e:
-                    if attempts < MASTODON_WRITE_RETRIES - 1:
+                    if attempts < EXPONENTIAL_BACKOFF_RETRIES - 1:
+                        delay = EXPONENTIAL_BACKOFF_BASE_DELAY * (2**attempts)
                         logger.warning(
                             "Mastodon network error posting status to "
-                            "Mastodon (%s), will retry. Error: %s",
+                            "Mastodon (%s), will retry in %.2f seconds. Error: %s",
                             self.name,
+                            delay,
                             e,
                         )
                         attempts += 1
+                        sleep(delay)
                     else:
                         logger.error(
                             "Failed to post status to Mastodon (%s) "
                             "after %s attempts: %s",
                             self.name,
-                            MASTODON_WRITE_RETRIES,
+                            EXPONENTIAL_BACKOFF_RETRIES,
                             e,
                         )
                         raise
