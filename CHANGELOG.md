@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.14.5]
+
+### Fixed
+
+- Bluesky connection: `_set_min_id_from_user_feed` no longer wipes the existing `min_id` when the author-feed fetch fails or the feed contains only reposts, to reduce possibility of duplicating posts on the next fetch attempt.
+
+### Changed
+
+- Bluesky connection: downgrade the "failed to fetch author feed after N attempts" log from `error` to `warning`, since the failure is transient and recovered automatically on the next polling cycle.
+- Unit tests reordering.
+- Minor dependency updates.
+
 ## [0.14.4] - 2026-05-26
 
 ### Changed

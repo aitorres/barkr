@@ -1,6 +1,6 @@
 [project]
 name = "barkr"
-version = "0.14.4"
+version = "0.14.5"
 description = "Yet another cross-posting tool in Python"
 authors = [
     { name = "Andrés Ignacio Torres", email = "dev@aitorres.com" },
