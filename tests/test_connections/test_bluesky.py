@@ -796,7 +796,7 @@ def test_bluesky_feed_retry_and_min_id_helpers(
         lambda *_args: repost_only_feed,
     )
     connection._set_min_id_from_user_feed()  # pylint: disable=protected-access
-    assert connection.min_id is None
+    assert connection.min_id == "at://did:plc:test/app.bsky.feed.post/original"
 
     connection.min_id = "at://did:plc:test/app.bsky.feed.post/original"
     monkeypatch.setattr(
@@ -805,7 +805,7 @@ def test_bluesky_feed_retry_and_min_id_helpers(
         lambda *_args: None,
     )
     connection._set_min_id_from_user_feed()  # pylint: disable=protected-access
-    assert connection.min_id is None
+    assert connection.min_id == "at://did:plc:test/app.bsky.feed.post/original"
 
 
 def test_bluesky_repost_as_most_recent_does_not_corrupt_min_id(
@@ -918,6 +918,166 @@ def test_bluesky_post_recovers_from_network_error(
 
     assert not posted
     assert set_min_id_calls == [True, True]
+
+
+def test_bluesky_set_min_id_preserves_existing_when_fetch_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If `_get_user_feed_with_retry` returns None (all retries failed),
+    `_set_min_id_from_user_feed` must NOT wipe the existing min_id.
+    Wiping it would cause the next fetch to re-emit every visible post
+    as new, producing duplicate cross-posts."""
+
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+    connection = _create_test_bluesky_connection()
+
+    original_min_id = "at://did:plc:test/app.bsky.feed.post/original"
+    connection.min_id = original_min_id
+
+    monkeypatch.setattr(
+        BlueskyConnection,
+        "_get_user_feed_with_retry",
+        lambda *_args: None,
+    )
+
+    connection._set_min_id_from_user_feed()  # pylint: disable=protected-access
+    assert connection.min_id == original_min_id
+
+
+def test_bluesky_set_min_id_preserves_existing_when_feed_has_only_reposts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If the feed fetch succeeds but contains only reposts, there is no
+    own-post URI to use as min_id."""
+
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+    connection = _create_test_bluesky_connection()
+
+    original_min_id = "at://did:plc:test/app.bsky.feed.post/original"
+    connection.min_id = original_min_id
+
+    repost_only_feed = [
+        MockPost(
+            MockPostData(
+                "2000-10-31T02:30:00.000-05:00",
+                MockRecord("Repost only"),
+                uri="at://did:plc:foreign/app.bsky.feed.post/repost",
+                viewer=MockViewer(repost="repost-ref"),
+            )
+        )
+    ]
+    monkeypatch.setattr(
+        BlueskyConnection,
+        "_get_user_feed_with_retry",
+        lambda *_args: repost_only_feed,
+    )
+
+    connection._set_min_id_from_user_feed()  # pylint: disable=protected-access
+    assert connection.min_id == original_min_id
+
+
+def test_bluesky_set_min_id_updates_when_newer_own_post_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sanity check: when the feed fetch succeeds and contains a newer own
+    post, min_id is correctly advanced."""
+
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+    connection = _create_test_bluesky_connection()
+
+    connection.min_id = "at://did:plc:test/app.bsky.feed.post/older"
+
+    new_own_uri = "at://did:plc:test/app.bsky.feed.post/newer"
+    feed = [
+        MockPost(
+            MockPostData(
+                "2000-10-31T02:30:00.000-05:00",
+                MockRecord("New own post"),
+                uri=new_own_uri,
+            )
+        )
+    ]
+    monkeypatch.setattr(
+        BlueskyConnection,
+        "_get_user_feed_with_retry",
+        lambda *_args: feed,
+    )
+
+    connection._set_min_id_from_user_feed()  # pylint: disable=protected-access
+    assert connection.min_id == new_own_uri
+
+
+def test_bluesky_post_network_error_preserves_min_id_when_recovery_feed_fetch_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When `send_post` raises NetworkError, the connection calls `_set_min_id_from_user_feed`
+    to recover. If the recovery feed fetch ALSO fails, the pre-existing min_id must be preserved."""
+
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+    connection = _create_test_bluesky_connection()
+
+    original_min_id = "at://did:plc:test/app.bsky.feed.post/before_failure"
+    connection.min_id = original_min_id
+
+    def raise_network_error(*_args, **_kwargs):
+        raise NetworkError("Temporary failure in name resolution")
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.send_post", raise_network_error
+    )
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        raise_network_error,
+    )
+    # Skip the retry sleeps to keep the test fast.
+    monkeypatch.setattr("time.sleep", lambda _delay: None)
+
+    posted = connection._post(  # pylint: disable=protected-access
+        [Message(id="src-1", message="msg", source_connection="test")]
+    )
+
+    assert not posted
+    assert connection.min_id == original_min_id
+
+
+def test_bluesky_post_network_error_preserves_min_id_with_repost_only_recovery_feed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Same regression as above, but the recovery feed fetch succeeds with
+    a feed that contains only reposts. min_id must still be preserved."""
+
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+    connection = _create_test_bluesky_connection()
+
+    original_min_id = "at://did:plc:test/app.bsky.feed.post/before_failure"
+    connection.min_id = original_min_id
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.send_post",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(NetworkError()),
+    )
+    monkeypatch.setattr(
+        "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
+        lambda *_args, **_kwargs: MockFeed(
+            [
+                MockPost(
+                    MockPostData(
+                        "2000-10-31T02:30:00.000-05:00",
+                        MockRecord("Foreign repost"),
+                        uri="at://did:plc:foreign/app.bsky.feed.post/repost",
+                        viewer=MockViewer(repost="repost-ref"),
+                    )
+                )
+            ]
+        ),
+    )
+
+    posted = connection._post(  # pylint: disable=protected-access
+        [Message(id="src-1", message="msg", source_connection="test")]
+    )
+
+    assert not posted
+    assert connection.min_id == original_min_id
 
 
 def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -702,16 +702,21 @@ class BlueskyConnection(ThreadAwareConnection):
         Attempts to retrieve the latest post from the user feed
         and set the `min_id` property as that post's URI, if it exists.
 
-        If the post does not exist, the `min_id` will be set as None.
+        If the feed cannot be fetched or contains no eligible posts,
+        the existing `min_id` is preserved to avoid re-emitting old
+        posts as "new" on the next fetch cycle.
         """
 
         user_feed = self._get_user_feed_with_retry()
-        old_min_id = self.min_id
+        if not user_feed:
+            return
 
-        if user_feed:
-            self.min_id = _get_latest_own_post_uri(user_feed)
-        else:
-            self.min_id = None
+        new_min_id = _get_latest_own_post_uri(user_feed)
+        if new_min_id is None:
+            return
+
+        old_min_id = self.min_id
+        self.min_id = new_min_id
 
         logger.debug(
             "Bluesky (%s) set min_id from user feed: %s -> %s",
@@ -748,9 +753,10 @@ class BlueskyConnection(ThreadAwareConnection):
                 return user_feed
             except BLUESKY_HANDLED_EXCEPTIONS as e:
                 if attempt >= EXPONENTIAL_BACKOFF_RETRIES - 1:
-                    logger.error(
+                    logger.warning(
                         "Failed to fetch author feed for Bluesky (%s) "
-                        "after %d attempts: %s",
+                        "after %d attempts: %s. "
+                        "Will retry on next polling cycle.",
                         self.name,
                         EXPONENTIAL_BACKOFF_RETRIES,
                         str(e),
