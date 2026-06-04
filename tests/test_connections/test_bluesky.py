@@ -10,21 +10,15 @@ from atproto_client.models import (
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
     AppBskyEmbedRecord,
-    AppBskyEmbedRecordWithMedia,
     AppBskyEmbedVideo,
     AppBskyRichtextFacet,
     ComAtprotoRepoStrongRef,
 )
 from atproto_client.models.blob_ref import BlobRef
-from bs4 import BeautifulSoup
 from PIL import Image
 from requests.exceptions import RequestException
 
 from barkr.connections import BlueskyConnection, ConnectionMode
-from barkr.connections.bluesky import (
-    _get_meta_tag_from_html_metadata,
-    _is_quote_embed,
-)
 from barkr.models import Message
 from tests.mocks.bluesky import (
     MockAuthor,
@@ -307,37 +301,6 @@ def test_bluesky_reconstructs_embeds_successfully(
     )
 
 
-def test_get_meta_tag_from_html_metadata() -> None:
-    """Extract meta tag values from small HTML snippets."""
-    # Test case 1: Meta tag with the specified property exists
-    html_content = (
-        "<html><head><meta property='og:title' content='Test Title'>"
-        "<meta property='og:description' content='Test Description'></head></html>"
-    )
-    soup = BeautifulSoup(html_content, "html.parser")
-    result = _get_meta_tag_from_html_metadata(soup, "og:title")
-    assert result == "Test Title"
-
-    # Test case 2: Meta tag with the specified property does not exist
-    result = _get_meta_tag_from_html_metadata(soup, "og:image")
-    assert result is None
-
-    # Test case 3: Meta tag with no content attribute
-    html_content = "<html><head><meta property='og:title'></head></html>"
-    soup = BeautifulSoup(html_content, "html.parser")
-    result = _get_meta_tag_from_html_metadata(soup, "og:title")
-    assert result is None
-
-    # Test case 4: multiple meta tags with the same property
-    html_content = (
-        "<html><head><meta property='og:title' content='Title 1'>"
-        "<meta property='og:title' content='Title 2'></head></html>"
-    )
-    soup = BeautifulSoup(html_content, "html.parser")
-    result = _get_meta_tag_from_html_metadata(soup, "og:title")
-    assert result == "Title 1"
-
-
 def test_generate_post_embed_and_facets(monkeypatch: pytest.MonkeyPatch) -> None:
     """Generate external embed and URL facets from text."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
@@ -579,48 +542,6 @@ def test_extract_media_list_from_embed(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not extract(test_did, video_embed)
 
 
-def test_process_text_with_embed_returns_original_when_not_expandable(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Leave text untouched when embed is missing, unsupported, or unmatched."""
-    _setup_bluesky_connection_monkeypatch(monkeypatch)
-
-    connection = BlueskyConnection(
-        "BlueskyClass",
-        [ConnectionMode.READ],
-        "test_handle",
-        "test_password",
-    )
-
-    process = connection._process_text_with_embed  # pylint: disable=protected-access
-
-    original_text = "zzqv zzqx zzqy"
-    assert process(original_text, None) == original_text
-
-    unsupported_embed = AppBskyEmbedImages.Main(
-        images=[
-            AppBskyEmbedImages.Image(
-                alt="Image 1",
-                image=BlobRef(
-                    ref="bafkreihash",
-                    mimeType="image/jpeg",
-                    size=12345,
-                ),
-            )
-        ]
-    )
-    assert process(original_text, unsupported_embed) == original_text
-
-    external_embed = AppBskyEmbedExternal.Main(
-        external=AppBskyEmbedExternal.External(
-            uri="https://example.com/fully-different-link",
-            title="Example",
-            description="Example",
-        )
-    )
-    assert process(original_text, external_embed) == original_text
-
-
 def test_upload_external_thumb_blob_from_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fetch image by URL and upload as blob; handle failures."""
     _setup_bluesky_connection_monkeypatch(monkeypatch)
@@ -778,35 +699,6 @@ def test_bluesky_feed_retry_and_min_id_helpers(
     )
     assert sleep_delays == [0.1, 0.2]
 
-    repost_only_feed = [
-        MockPost(
-            MockPostData(
-                "2000-10-31T02:30:00.000-05:00",
-                MockRecord("Repost only"),
-                uri="at://did:plc:foreign/app.bsky.feed.post/repost",
-                viewer=MockViewer(repost="repost-ref"),
-            )
-        )
-    ]
-
-    connection.min_id = "at://did:plc:test/app.bsky.feed.post/original"
-    monkeypatch.setattr(
-        BlueskyConnection,
-        "_get_user_feed_with_retry",
-        lambda *_args: repost_only_feed,
-    )
-    connection._set_min_id_from_user_feed()  # pylint: disable=protected-access
-    assert connection.min_id == "at://did:plc:test/app.bsky.feed.post/original"
-
-    connection.min_id = "at://did:plc:test/app.bsky.feed.post/original"
-    monkeypatch.setattr(
-        BlueskyConnection,
-        "_get_user_feed_with_retry",
-        lambda *_args: None,
-    )
-    connection._set_min_id_from_user_feed()  # pylint: disable=protected-access
-    assert connection.min_id == "at://did:plc:test/app.bsky.feed.post/original"
-
 
 def test_bluesky_repost_as_most_recent_does_not_corrupt_min_id(
     monkeypatch: pytest.MonkeyPatch,
@@ -879,45 +771,6 @@ def test_bluesky_repost_as_most_recent_does_not_corrupt_min_id(
 
     messages = bluesky.read()
     assert len(messages) == 0
-
-
-def test_bluesky_post_recovers_from_network_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A NetworkError (e.g., DNS failure) during send_post should be swallowed
-    so the connection can keep running. min_id must be refreshed from the feed
-    in case the post actually went through before the network dropped."""
-
-    _setup_bluesky_connection_monkeypatch(monkeypatch)
-    bluesky = _create_test_bluesky_connection()
-
-    def raise_network_error(*_args, **_kwargs):
-        raise NetworkError("Temporary failure in name resolution")
-
-    monkeypatch.setattr(
-        "barkr.connections.bluesky.Client.send_post", raise_network_error
-    )
-
-    set_min_id_calls: list[bool] = []
-    monkeypatch.setattr(
-        BlueskyConnection,
-        "_set_min_id_from_user_feed",
-        lambda self: set_min_id_calls.append(True),
-    )
-
-    posted = bluesky._post(  # pylint: disable=protected-access
-        [
-            Message(
-                id="ForeignId1", message="test message 1", source_connection="test"
-            ),
-            Message(
-                id="ForeignId2", message="test message 2", source_connection="test"
-            ),
-        ]
-    )
-
-    assert not posted
-    assert set_min_id_calls == [True, True]
 
 
 def test_bluesky_set_min_id_preserves_existing_when_fetch_fails(
@@ -1007,11 +860,52 @@ def test_bluesky_set_min_id_updates_when_newer_own_post_present(
     assert connection.min_id == new_own_uri
 
 
+def test_bluesky_post_recovers_from_network_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A NetworkError (e.g., DNS failure) during send_post should be swallowed
+    so the connection can keep running. min_id must be refreshed from the feed
+    in case the post actually went through before the network dropped."""
+
+    _setup_bluesky_connection_monkeypatch(monkeypatch)
+    bluesky = _create_test_bluesky_connection()
+
+    def raise_network_error(*_args, **_kwargs):
+        raise NetworkError("Temporary failure in name resolution")
+
+    monkeypatch.setattr(
+        "barkr.connections.bluesky.Client.send_post", raise_network_error
+    )
+
+    set_min_id_calls: list[bool] = []
+    monkeypatch.setattr(
+        BlueskyConnection,
+        "_set_min_id_from_user_feed",
+        lambda self: set_min_id_calls.append(True),
+    )
+
+    posted = bluesky._post(  # pylint: disable=protected-access
+        [
+            Message(
+                id="ForeignId1", message="test message 1", source_connection="test"
+            ),
+            Message(
+                id="ForeignId2", message="test message 2", source_connection="test"
+            ),
+        ]
+    )
+
+    assert not posted
+    assert set_min_id_calls == [True, True]
+
+
 def test_bluesky_post_network_error_preserves_min_id_when_recovery_feed_fetch_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """When `send_post` raises NetworkError, the connection calls `_set_min_id_from_user_feed`
-    to recover. If the recovery feed fetch ALSO fails, the pre-existing min_id must be preserved."""
+    """When `send_post` raises NetworkError, the connection calls
+    `_set_min_id_from_user_feed` to recover. If the recovery feed fetch
+    ALSO fails, the pre-existing min_id must be preserved.
+    """
 
     _setup_bluesky_connection_monkeypatch(monkeypatch)
     connection = _create_test_bluesky_connection()
@@ -1091,62 +985,6 @@ def _setup_bluesky_connection_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> No
         "atproto_client.namespaces.sync_ns.AppBskyFeedNamespace.get_author_feed",
         lambda *_: MockFeed([]),
     )
-
-
-def test_is_quote_embed() -> None:
-    """Identify quote-embed types vs. other embed variants."""
-    assert _is_quote_embed(None) is False
-
-    external_embed = AppBskyEmbedExternal.Main(
-        external=AppBskyEmbedExternal.External(
-            uri="https://example.com",
-            title="Example Title",
-            description="Example Description",
-        )
-    )
-    assert _is_quote_embed(external_embed) is False
-
-    images_embed = AppBskyEmbedImages.Main(
-        images=[
-            AppBskyEmbedImages.Image(
-                alt="Image 1",
-                image=BlobRef(
-                    ref="bafkreihash",
-                    mimeType="image/jpeg",
-                    size=12345,
-                ),
-            )
-        ]
-    )
-    assert _is_quote_embed(images_embed) is False
-
-    video_embed = AppBskyEmbedVideo.Main(
-        video=BlobRef(
-            ref="bafkreiothervid",
-            mimeType="video/mp4",
-            size=67890,
-        )
-    )
-    assert _is_quote_embed(video_embed) is False
-
-    record_embed = AppBskyEmbedRecord.Main(
-        record=ComAtprotoRepoStrongRef.Main(
-            uri="at://did:plc:test/app.bsky.feed.post/abc123",
-            cid="bafyreirecordcid",
-        )
-    )
-    assert _is_quote_embed(record_embed) is True
-
-    record_with_media_embed = AppBskyEmbedRecordWithMedia.Main(
-        record=AppBskyEmbedRecord.Main(
-            record=ComAtprotoRepoStrongRef.Main(
-                uri="at://did:plc:test/app.bsky.feed.post/xyz789",
-                cid="bafyreirecordwithmediacid",
-            )
-        ),
-        media=images_embed,
-    )
-    assert _is_quote_embed(record_with_media_embed) is True
 
 
 def _create_test_bluesky_connection() -> BlueskyConnection:

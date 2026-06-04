@@ -33,10 +33,16 @@ from atproto_client.models.blob_ref import BlobRef
 from atproto_client.models.common import XrpcError
 from atproto_client.models.string_formats import Did
 from atproto_client.namespaces.sync_ns import ComAtprotoSyncNamespace
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 from httpx import Timeout
 
 from barkr.connections.base import ConnectionMode, ThreadAwareConnection
+from barkr.connections.internal.bluesky_helpers import (
+    get_latest_own_post_uri,
+    get_meta_tag_from_html_metadata,
+    is_quote_embed,
+    process_text_with_embed,
+)
 from barkr.models import (
     Media,
     Message,
@@ -150,10 +156,10 @@ class BlueskyConnection(ThreadAwareConnection):
                 if self.min_id is None or post.uri > self.min_id:
                     record = cast(PostRecord, post.record)
                     if (embed := record.embed) is not None:
-                        if _is_quote_embed(embed):
+                        if is_quote_embed(embed):
                             continue
 
-                        text = self._process_text_with_embed(record.text, embed)
+                        text = process_text_with_embed(record.text, embed)
                     else:
                         text = record.text
 
@@ -182,7 +188,7 @@ class BlueskyConnection(ThreadAwareConnection):
 
         if messages and user_feed:
             old_min_id = self.min_id
-            self.min_id = _get_latest_own_post_uri(user_feed) or self.min_id
+            self.min_id = get_latest_own_post_uri(user_feed) or self.min_id
             logger.info(
                 "Bluesky (%s) fetched %s new messages (min_id: %s -> %s)",
                 self.name,
@@ -437,7 +443,7 @@ class BlueskyConnection(ThreadAwareConnection):
 
                 # Extract the description from the meta tag
                 if (
-                    meta_description := _get_meta_tag_from_html_metadata(
+                    meta_description := get_meta_tag_from_html_metadata(
                         soup, "og:description"
                     )
                 ) is not None:
@@ -445,7 +451,7 @@ class BlueskyConnection(ThreadAwareConnection):
 
                 # Extract the image from the meta tag
                 if (
-                    image := _get_meta_tag_from_html_metadata(soup, "og:image")
+                    image := get_meta_tag_from_html_metadata(soup, "og:image")
                 ) is not None:
                     # Fetching the image and reuploading to Bluesky
                     thumbnail_blob = self._upload_external_thumb_blob_from_url(image)
@@ -537,60 +543,6 @@ class BlueskyConnection(ThreadAwareConnection):
                 )
 
         return media_list
-
-    def _process_text_with_embed(
-        self,
-        text: str,
-        embed: Optional[
-            Union[
-                AppBskyEmbedExternal.Main,
-                AppBskyEmbedRecord.Main,
-                AppBskyEmbedImages.Main,
-                AppBskyEmbedVideo.Main,
-                AppBskyEmbedRecordWithMedia.Main,
-            ]
-        ],
-    ) -> str:
-        """
-        Handles the special case where a Bluesky post contains a link to an embedded
-        resources that is not fully rendered as part of the text.
-
-        Leveraging the Embed object, reconstructs the text to include
-        the full URL to the resource.
-
-        For example, when posting the URL
-        https://open.spotify.com/track/0ElVpg9XIswx3XWs6kUj6a?si=0015d86587524ef9
-        the text is trimmed to open.spotify.com/track/0ElVpg... but the
-        Embed object contains the full URL.
-
-        :param text: The original text of the post
-        :param embed: The Embed object containing the link
-        :return: The reconstructed text with the full URL
-        """
-
-        if embed is None:
-            return text
-
-        # Depending on the type of embed, we get the URL
-        # from the corresponding field
-        if isinstance(embed, AppBskyEmbedExternal.Main):
-            url = embed.external.uri
-        else:
-            return text
-
-        # We now want to find the word in the text that is contained
-        # in the URL, and we only care for the _longest_ word
-        # if there are multiple matches
-        matching_word = ""
-        for word in text.split():
-            if word.replace("...", "") in url:
-                if len(word) > len(matching_word):
-                    matching_word = word
-
-        if not matching_word:
-            return text
-
-        return text.replace(matching_word, url)
 
     def _upload_external_thumb_blob_from_url(self, image_url: str) -> Optional[BlobRef]:
         """
@@ -711,7 +663,7 @@ class BlueskyConnection(ThreadAwareConnection):
         if not user_feed:
             return
 
-        new_min_id = _get_latest_own_post_uri(user_feed)
+        new_min_id = get_latest_own_post_uri(user_feed)
         if new_min_id is None:
             return
 
@@ -776,78 +728,3 @@ class BlueskyConnection(ThreadAwareConnection):
                 continue
 
         return None
-
-
-def _get_meta_tag_from_html_metadata(
-    soup: BeautifulSoup, tag_name: str
-) -> Optional[str]:
-    """
-    Extracts the content of meta tag from the HTML metadata of a page.
-
-    If there are multiple meta tags with the same property,
-    only the first one is returned.
-
-    :param soup: The BeautifulSoup object containing the HTML metadata
-    :param tag_name: The name of the meta tag to extract
-    :return: The meta tag content if found, otherwise None
-    """
-
-    tag = soup.find("meta", attrs={"property": tag_name})
-    if isinstance(tag, Tag) and tag.has_attr("content"):
-        tag_content = tag["content"]
-
-        if isinstance(tag_content, list):
-            tag_content = tag_content[0]
-
-        return tag_content
-
-    return None
-
-
-def _is_quote_embed(
-    embed: Optional[
-        Union[
-            AppBskyEmbedExternal.Main,
-            AppBskyEmbedRecord.Main,
-            AppBskyEmbedImages.Main,
-            AppBskyEmbedVideo.Main,
-            AppBskyEmbedRecordWithMedia.Main,
-        ]
-    ],
-) -> bool:
-    """
-    Determines if a given Bluesky post embed represents a quote to
-    another post. Useful to skip quote posts when fetching messages,
-    as we might not have all the context to reconstruct the quoted post
-    on other connections.
-
-    :param embed: The embed object to check
-    :return: True if the embed is a quote, False otherwise
-    """
-
-    if embed is None:
-        return False
-
-    return isinstance(
-        embed, (AppBskyEmbedRecord.Main, AppBskyEmbedRecordWithMedia.Main)
-    )
-
-
-def _get_latest_own_post_uri(
-    user_feed: list[FeedViewPost],
-) -> Optional[str]:
-    """
-    Returns the URI of the most recent non-repost post in the feed,
-    or None if all items are reposts.
-
-    Only non-repost URIs are safe for min_id comparison because they
-    share the authenticated user's DID prefix, making lexicographic
-    ordering equivalent to chronological ordering.
-    """
-
-    for feed_view in user_feed:
-        post = feed_view.post
-        if post.viewer is None or post.viewer.repost is None:
-            return str(post.uri)
-
-    return None
