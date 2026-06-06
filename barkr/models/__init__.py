@@ -7,16 +7,20 @@ and how to use them.
 """
 
 from barkr.models.media import Media
+from barkr.models.mention_style import MentionStyle
 from barkr.models.message import Message
 from barkr.models.message_allowed_replies import MessageAllowedReplies
+from barkr.models.message_mention import MessageMention
 from barkr.models.message_metadata import MessageMetadata
 from barkr.models.message_type import MessageType
 from barkr.models.message_visibility import MessageVisibility
 
 __all__ = [
     "Media",
+    "MentionStyle",
     "Message",
     "MessageAllowedReplies",
+    "MessageMention",
     "MessageMetadata",
     "MessageType",
     "MessageVisibility",

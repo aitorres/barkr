@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from barkr.models.media import Media
+from barkr.models.mention_style import MentionStyle
 from barkr.models.message_metadata import MessageMetadata
 from barkr.models.message_type import MessageType
 from barkr.models.message_visibility import MessageVisibility
@@ -77,3 +78,16 @@ class Message:
 
         # By default, we only support text messages
         return has_text
+
+    def get_content(self, mention_style: MentionStyle = MentionStyle.PLAIN) -> str:
+        """
+        Return the message body, optionally enriched with mention
+        information drawn from the metadata.
+
+        :param mention_style: How to render mentions in the returned text
+        :return: The message body with mention rendering applied
+        """
+
+        return MentionStyle.replace_mentions(
+            self.message, self.metadata.mentions, mention_style
+        )

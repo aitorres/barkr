@@ -3,8 +3,10 @@ Module to implement unit tests for the Message class.
 """
 
 from barkr.models.media import Media
+from barkr.models.mention_style import MentionStyle
 from barkr.models.message import Message
 from barkr.models.message_allowed_replies import MessageAllowedReplies
+from barkr.models.message_mention import MessageMention
 from barkr.models.message_metadata import MessageMetadata
 from barkr.models.message_type import MessageType
 from barkr.models.message_visibility import MessageVisibility
@@ -203,3 +205,165 @@ def test_default_message_metadata_is_shared_singleton() -> None:
     message_c = Message(id="c", message="hi", source_connection="test", metadata=custom)
     assert message_c.metadata is custom
     assert message_c.metadata is not message_a.metadata
+
+
+def test_get_content_plain_returns_message_unchanged() -> None:
+    """
+    `MentionStyle.PLAIN` (default) returns the original body verbatim,
+    even when mentions are attached.
+    """
+
+    text = "Hello @alice.bsky.social!"
+    message = Message(
+        id="1",
+        message=text,
+        source_connection="test",
+        metadata=MessageMetadata(
+            mentions=[
+                MessageMention(
+                    url="https://bsky.app/profile/did:plc:alice",
+                    username="@alice.bsky.social",
+                ),
+            ],
+        ),
+    )
+
+    assert message.get_content() == text
+    assert message.get_content(MentionStyle.PLAIN) == text
+
+
+def test_get_content_short_circuits_without_mentions() -> None:
+    """
+    Without mentions on the metadata, every style returns the body verbatim.
+    """
+
+    text = "Hello, world!"
+    message = Message(id="1", message=text, source_connection="test")
+
+    assert message.get_content(MentionStyle.APPEND_URL) == text
+    assert message.get_content(MentionStyle.REPLACE_WITH_URL) == text
+
+
+def test_get_content_append_url_renders_each_mention() -> None:
+    """
+    `MentionStyle.APPEND_URL` keeps the username and adds the profile URL
+    in parentheses for each mention.
+    """
+
+    message = Message(
+        id="1",
+        message="Hi @alice.bsky.social and @bob.bsky.social!",
+        source_connection="test",
+        metadata=MessageMetadata(
+            mentions=[
+                MessageMention(
+                    url="https://bsky.app/profile/did:plc:alice",
+                    username="@alice.bsky.social",
+                ),
+                MessageMention(
+                    url="https://bsky.app/profile/did:plc:bob",
+                    username="@bob.bsky.social",
+                ),
+            ],
+        ),
+    )
+
+    assert message.get_content(MentionStyle.APPEND_URL) == (
+        "Hi @alice.bsky.social (https://bsky.app/profile/did:plc:alice) "
+        "and @bob.bsky.social (https://bsky.app/profile/did:plc:bob)!"
+    )
+
+
+def test_get_content_replace_with_url_swaps_handle() -> None:
+    """
+    `MentionStyle.REPLACE_WITH_URL` swaps the username text for the URL.
+    """
+
+    message = Message(
+        id="1",
+        message="Hi @alice.bsky.social!",
+        source_connection="test",
+        metadata=MessageMetadata(
+            mentions=[
+                MessageMention(
+                    url="https://bsky.app/profile/did:plc:alice",
+                    username="@alice.bsky.social",
+                ),
+            ],
+        ),
+    )
+
+    assert (
+        message.get_content(MentionStyle.REPLACE_WITH_URL)
+        == "Hi https://bsky.app/profile/did:plc:alice!"
+    )
+
+
+def test_get_content_supports_markdown_link_style() -> None:
+    """`MentionStyle.MARKDOWN_LINK` renders a markdown link per mention."""
+
+    message = Message(
+        id="1",
+        message="Hi @alice.bsky.social!",
+        source_connection="test",
+        metadata=MessageMetadata(
+            mentions=[
+                MessageMention(
+                    url="https://bsky.app/profile/did:plc:alice",
+                    username="@alice.bsky.social",
+                ),
+            ],
+        ),
+    )
+
+    assert (
+        message.get_content(MentionStyle.MARKDOWN_LINK)
+        == "Hi [@alice.bsky.social](https://bsky.app/profile/did:plc:alice)!"
+    )
+
+
+def test_get_content_supports_html_link_style() -> None:
+    """`MentionStyle.HTML_LINK` renders an HTML link per mention."""
+
+    message = Message(
+        id="1",
+        message="Hi @alice.bsky.social!",
+        source_connection="test",
+        metadata=MessageMetadata(
+            mentions=[
+                MessageMention(
+                    url="https://bsky.app/profile/did:plc:alice",
+                    username="@alice.bsky.social",
+                ),
+            ],
+        ),
+    )
+
+    assert (
+        message.get_content(MentionStyle.HTML_LINK)
+        == 'Hi <a href="https://bsky.app/profile/did:plc:alice">'
+        "@alice.bsky.social</a>!"
+    )
+
+
+def test_get_content_skips_handles_not_in_text() -> None:
+    """
+    A mention whose username text is missing from the body is skipped silently.
+    """
+
+    message = Message(
+        id="1",
+        message="Hello, world!",
+        source_connection="test",
+        metadata=MessageMetadata(
+            mentions=[
+                MessageMention(
+                    url="https://bsky.app/profile/did:plc:ghost",
+                    username="@ghost.bsky.social",
+                ),
+            ],
+        ),
+    )
+
+    assert message.get_content(MentionStyle.APPEND_URL) == "Hello, world!"
+    assert message.get_content(MentionStyle.REPLACE_WITH_URL) == "Hello, world!"

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from barkr.models.message_allowed_replies import MessageAllowedReplies
+from barkr.models.message_mention import MessageMention
 from barkr.models.message_visibility import MessageVisibility
 
 
@@ -25,3 +26,4 @@ class MessageMetadata:
     label: Optional[str] = None
     visibility: MessageVisibility = MessageVisibility.PUBLIC
     allowed_replies: Optional[list[MessageAllowedReplies]] = None
+    mentions: Optional[list[MessageMention]] = None
