@@ -9,6 +9,8 @@ import pytest
 
 from barkr.connections import ConnectionMode, DiscordConnection
 from barkr.models import Message
+from barkr.models.message_mention import MessageMention
+from barkr.models.message_metadata import MessageMetadata
 
 
 class MockDiscordChannel:
@@ -167,3 +169,42 @@ def test_discord_post_uses_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not connection._post(messages)  # pylint: disable=protected-access
     assert MockEventLoop.run_until_complete_calls == 1
     assert received_messages == [messages]
+
+
+def test_discord_renders_mentions_with_profile_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mention metadata is rendered as markdown links on Discord."""
+
+    MockDiscordChannel.reset()
+    MockDiscordClient.reset()
+
+    monkeypatch.setattr("discord.Client", MockDiscordClient)
+
+    connection = DiscordConnection(
+        "Discord Connection", [ConnectionMode.WRITE], "test_token", 1234567890
+    )
+
+    asyncio.run(
+        connection._send_messages(  # pylint: disable=protected-access
+            [
+                Message(
+                    id="1",
+                    message="Hi @alice.bsky.social!",
+                    source_connection="bluesky",
+                    metadata=MessageMetadata(
+                        mentions=[
+                            MessageMention(
+                                url="https://bsky.app/profile/did:plc:alice",
+                                username="@alice.bsky.social",
+                            ),
+                        ],
+                    ),
+                ),
+            ]
+        )
+    )
+
+    assert MockDiscordChannel.sent_messages == [
+        "Hi [@alice.bsky.social](https://bsky.app/profile/did:plc:alice)!"
+    ]

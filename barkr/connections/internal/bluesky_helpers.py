@@ -10,9 +10,13 @@ from atproto_client.models import (
     AppBskyEmbedRecord,
     AppBskyEmbedRecordWithMedia,
     AppBskyEmbedVideo,
+    AppBskyRichtextFacet,
 )
 from atproto_client.models.app.bsky.feed.defs import FeedViewPost
+from atproto_client.models.app.bsky.feed.post import Record as PostRecord
 from bs4 import BeautifulSoup, Tag
+
+from barkr.models import MessageMention
 
 BlueskyEmbed = Optional[
     Union[
@@ -131,3 +135,33 @@ def get_latest_own_post_uri(
             return str(post.uri)
 
     return None
+
+
+def extract_mention_facets(record: PostRecord) -> Optional[list[MessageMention]]:
+    """
+    Extract mention facets from a Bluesky post record by parsing
+    `app.bsky.richtext.facet#mention` facets.
+
+    Returns None if the record has no facets or no mention features,
+    so the result can be passed through to MessageMetadata as-is.
+    """
+
+    if not record.facets:
+        return None
+
+    raw_text_bytes = record.text.encode("utf-8")
+    mentions: list[MessageMention] = []
+    for facet in record.facets:
+        for feature in facet.features or []:
+            if isinstance(feature, AppBskyRichtextFacet.Mention):
+                username = raw_text_bytes[
+                    facet.index.byte_start : facet.index.byte_end
+                ].decode("utf-8", errors="replace")
+                mentions.append(
+                    MessageMention(
+                        url=f"https://bsky.app/profile/{feature.did}",
+                        username=username,
+                    )
+                )
+
+    return mentions or None

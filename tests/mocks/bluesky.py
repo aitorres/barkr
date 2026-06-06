@@ -63,6 +63,7 @@ class MockRecord:
     reply: Optional[MockReply] = None
     embed: Union[MockExternalEmbed, Any, None] = None
     langs: Optional[list[str]] = None
+    facets: Optional[list[Any]] = None
 
 
 @dataclass(frozen=True)

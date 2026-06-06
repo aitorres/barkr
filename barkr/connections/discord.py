@@ -13,7 +13,7 @@ import logging
 import discord
 
 from barkr.connections.base import Connection, ConnectionMode
-from barkr.models import Message
+from barkr.models import MentionStyle, Message
 
 logger = logging.getLogger()
 
@@ -108,7 +108,7 @@ class DiscordConnection(Connection):
             )
             channel = client.get_channel(self.channel_id)
             for message in messages:
-                await channel.send(message.message)
+                await channel.send(message.get_content(MentionStyle.MARKDOWN_LINK))
                 logger.info("Message posted to Discord (%s) channel", self.name)
 
             await client.close()

@@ -38,6 +38,7 @@ from httpx import Timeout
 
 from barkr.connections.base import ConnectionMode, ThreadAwareConnection
 from barkr.connections.internal.bluesky_helpers import (
+    extract_mention_facets,
     get_latest_own_post_uri,
     get_meta_tag_from_html_metadata,
     is_quote_embed,
@@ -180,7 +181,10 @@ class BlueskyConnection(ThreadAwareConnection):
                             id=post.uri,
                             message=text,
                             source_connection=self.name,
-                            metadata=MessageMetadata(language=language),
+                            metadata=MessageMetadata(
+                                language=language,
+                                mentions=extract_mention_facets(record),
+                            ),
                             media=media_list,
                             reply_to_id=reply_to_id,
                         )

@@ -2,22 +2,29 @@
 Unit tests for Bluesky stateless helpers.
 """
 
+from typing import cast
+
 from atproto_client.models import (
     AppBskyEmbedExternal,
     AppBskyEmbedImages,
     AppBskyEmbedRecord,
     AppBskyEmbedRecordWithMedia,
     AppBskyEmbedVideo,
+    AppBskyRichtextFacet,
     ComAtprotoRepoStrongRef,
 )
+from atproto_client.models.app.bsky.feed.post import Record as PostRecord
 from atproto_client.models.blob_ref import BlobRef
 from bs4 import BeautifulSoup
 
 from barkr.connections.internal.bluesky_helpers import (
+    extract_mention_facets,
     get_meta_tag_from_html_metadata,
     is_quote_embed,
     process_text_with_embed,
 )
+from barkr.models.message_mention import MessageMention
+from tests.mocks.bluesky import MockRecord
 
 
 def test_get_meta_tag_from_html_metadata() -> None:
@@ -134,3 +141,50 @@ def test_process_text_with_embed_returns_original_when_not_expandable() -> None:
         )
     )
     assert process_text_with_embed(original_text, external_embed) == original_text
+
+
+def test_extract_mention_facets_returns_mentions_in_source_order() -> None:
+    """Extract mention facets and ignore non-mention richtext features."""
+
+    text = "Hi @bob I love @bob how're you doing @bob"
+    handle = "@bob"
+    first_index = text.index(handle)
+    second_index = text.index(handle, first_index + 1)
+    third_index = text.index(handle, second_index + 1)
+
+    record = MockRecord(
+        text=text,
+        facets=[
+            AppBskyRichtextFacet.Main(
+                index=AppBskyRichtextFacet.ByteSlice(
+                    byte_start=len(text[:first_index].encode("utf-8")),
+                    byte_end=len(text[: first_index + len(handle)].encode("utf-8")),
+                ),
+                features=[AppBskyRichtextFacet.Mention(did="did:plc:bob-1")],
+            ),
+            AppBskyRichtextFacet.Main(
+                index=AppBskyRichtextFacet.ByteSlice(
+                    byte_start=len(text[:second_index].encode("utf-8")),
+                    byte_end=len(text[: second_index + len(handle)].encode("utf-8")),
+                ),
+                features=[AppBskyRichtextFacet.Link(uri="https://example.com")],
+            ),
+            AppBskyRichtextFacet.Main(
+                index=AppBskyRichtextFacet.ByteSlice(
+                    byte_start=len(text[:third_index].encode("utf-8")),
+                    byte_end=len(text[: third_index + len(handle)].encode("utf-8")),
+                ),
+                features=[AppBskyRichtextFacet.Mention(did="did:plc:bob-3")],
+            ),
+        ],
+    )
+
+    mentions: list[MessageMention] = (
+        extract_mention_facets(cast(PostRecord, record)) or []
+    )
+
+    assert len(mentions) == 2
+    assert mentions[0].username == "@bob"
+    assert mentions[0].url == "https://bsky.app/profile/did:plc:bob-1"
+    assert mentions[1].username == "@bob"
+    assert mentions[1].url == "https://bsky.app/profile/did:plc:bob-3"
