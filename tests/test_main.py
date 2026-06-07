@@ -97,32 +97,7 @@ def test_barkr_read_only() -> None:
     assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
 
     barkr.read()
-    assert _qs(barkr) == {
-        "TestCon1": [
-            Message(
-                id="TestCon2-Id1",
-                message="TestCon2-TestMsg1",
-                source_connection="TestCon2",
-            ),
-            Message(
-                id="TestCon2-Id2",
-                message="TestCon2-TestMsg2",
-                source_connection="TestCon2",
-            ),
-        ],
-        "TestCon2": [
-            Message(
-                id="TestCon1-Id1",
-                message="TestCon1-TestMsg1",
-                source_connection="TestCon1",
-            ),
-            Message(
-                id="TestCon1-Id2",
-                message="TestCon1-TestMsg2",
-                source_connection="TestCon1",
-            ),
-        ],
-    }
+    assert _qs(barkr) == {"TestCon1": [], "TestCon2": []}
     assert test_connection_1.posted_messages == []
     assert test_connection_2.posted_messages == []
 

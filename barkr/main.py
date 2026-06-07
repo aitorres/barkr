@@ -74,6 +74,12 @@ class Barkr:
         of other connections
         """
 
+        write_connections = {
+            connection.name
+            for connection in self.connections
+            if ConnectionMode.WRITE in connection.modes
+        }
+
         for connection in self.connections:
             # Reading is only allowed for connections with the READ mode
             if ConnectionMode.READ not in connection.modes:
@@ -84,7 +90,7 @@ class Barkr:
             if messages:
                 with self.message_queues_lock:
                     for name in self.message_queues:
-                        if name != connection.name:
+                        if name != connection.name and name in write_connections:
                             self.message_queues[name].extend(messages)
                             logger.info(
                                 "Added %s message(s) from %s to %s queue",
