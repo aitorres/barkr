@@ -4,7 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.14.5]
+## [0.14.6] - 2026-06-11
+
+### Fixed
+
+- RSS connection: fixed an issue where the connection would throw an error if it parses a post that does not have a last published date, which is used to set the `min_id` for the connection. We now fallback to the latest published `link` if the published date is not available.
+
+### Changed
+
+- Minor dependency updates and typing tweaks.
+
+## [0.14.5] - 2026-06-04
 
 ### Fixed
 
