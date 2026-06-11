@@ -20,6 +20,7 @@ from atproto_client.exceptions import (
 )
 from atproto_client.models import (
     AppBskyEmbedExternal,
+    AppBskyEmbedGallery,
     AppBskyEmbedImages,
     AppBskyEmbedRecord,
     AppBskyEmbedRecordWithMedia,
@@ -480,6 +481,7 @@ class BlueskyConnection(ThreadAwareConnection):
                 AppBskyEmbedExternal.Main,
                 AppBskyEmbedRecord.Main,
                 AppBskyEmbedImages.Main,
+                AppBskyEmbedGallery.Main,
                 AppBskyEmbedVideo.Main,
                 AppBskyEmbedRecordWithMedia.Main,
             ]

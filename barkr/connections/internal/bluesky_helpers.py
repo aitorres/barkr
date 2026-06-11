@@ -6,6 +6,7 @@ from typing import Optional, Union
 
 from atproto_client.models import (
     AppBskyEmbedExternal,
+    AppBskyEmbedGallery,
     AppBskyEmbedImages,
     AppBskyEmbedRecord,
     AppBskyEmbedRecordWithMedia,
@@ -23,6 +24,7 @@ BlueskyEmbed = Optional[
         AppBskyEmbedExternal.Main,
         AppBskyEmbedRecord.Main,
         AppBskyEmbedImages.Main,
+        AppBskyEmbedGallery.Main,
         AppBskyEmbedVideo.Main,
         AppBskyEmbedRecordWithMedia.Main,
     ]
