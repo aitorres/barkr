@@ -4,6 +4,7 @@ Module to implement unit tests for the RSS connection class
 
 from dataclasses import dataclass
 from time import struct_time
+from typing import Optional
 
 import pytest
 
@@ -20,7 +21,9 @@ class MockFeedParserFeedEntry:
 
     title: str
     link: str
-    published_parsed: struct_time = struct_time((2025, 2, 27, 1, 0, 0, 1, 0, 0))
+    published_parsed: Optional[struct_time] = struct_time(
+        (2025, 2, 27, 1, 0, 0, 1, 0, 0)
+    )
 
 
 @dataclass(frozen=True)
@@ -190,3 +193,128 @@ def test_rssconnection_handles_exception_on_initial_fetch(
     assert messages[0].id == "https://example.com"
     assert messages[0].message == "Title: https://example.com"
     assert rss.feed_min_date is not None
+
+
+def test_rssconnection_handles_entries_without_published_date(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Test that entries without published dates do not break incremental reads.
+    """
+
+    monkeypatch.setattr("feedparser.parse", lambda _: MockFeedParserFeed(entries=[]))
+    rss = RSSConnection(
+        "RSSClass",
+        [ConnectionMode.READ],
+        "https://example.com",
+    )
+
+    rss.feed_min_date = struct_time((2025, 2, 28, 1, 0, 1, 0, 0, 0))
+    monkeypatch.setattr(
+        "feedparser.parse",
+        lambda _: MockFeedParserFeed(
+            entries=[
+                MockFeedParserFeedEntry(
+                    "No Date Title",
+                    "https://no-date.example.com",
+                    None,
+                ),
+                MockFeedParserFeedEntry(
+                    "Old Title",
+                    "https://old.example.com",
+                    struct_time((2025, 2, 27, 1, 0, 1, 0, 0, 0)),
+                ),
+            ]
+        ),
+    )
+
+    messages = rss.read()
+
+    assert len(messages) == 1
+    assert messages[0].id == "https://no-date.example.com"
+    assert messages[0].message == "No Date Title: https://no-date.example.com"
+    assert rss.feed_min_date == struct_time((2025, 2, 28, 1, 0, 1, 0, 0, 0))
+    assert rss.latest_entry_id == "https://no-date.example.com"
+
+    messages = rss.read()
+
+    assert not messages
+
+
+def test_rssconnection_reads_only_newer_entries_after_undated_top_entry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Test that subsequent polls return only new entries when the last seen top entry
+    had no published date and remains in the feed.
+    """
+
+    monkeypatch.setattr("feedparser.parse", lambda _: MockFeedParserFeed(entries=[]))
+    rss = RSSConnection(
+        "RSSClass",
+        [ConnectionMode.READ],
+        "https://example.com",
+    )
+
+    monkeypatch.setattr(
+        "feedparser.parse",
+        lambda _: MockFeedParserFeed(
+            entries=[
+                MockFeedParserFeedEntry(
+                    "No Date Title",
+                    "https://no-date.example.com",
+                    None,
+                ),
+                MockFeedParserFeedEntry(
+                    "Older Title",
+                    "https://older.example.com",
+                    struct_time((2025, 2, 27, 1, 0, 1, 0, 0, 0)),
+                ),
+            ]
+        ),
+    )
+
+    first_messages = rss.read()
+
+    assert len(first_messages) == 2
+    assert [message.id for message in first_messages] == [
+        "https://older.example.com",
+        "https://no-date.example.com",
+    ]
+    assert rss.latest_entry_id == "https://no-date.example.com"
+
+    monkeypatch.setattr(
+        "feedparser.parse",
+        lambda _: MockFeedParserFeed(
+            entries=[
+                MockFeedParserFeedEntry(
+                    "Newest Title",
+                    "https://newest.example.com",
+                    struct_time((2025, 3, 2, 1, 0, 1, 0, 0, 0)),
+                ),
+                MockFeedParserFeedEntry(
+                    "Newer Title",
+                    "https://newer.example.com",
+                    struct_time((2025, 3, 1, 1, 0, 1, 0, 0, 0)),
+                ),
+                MockFeedParserFeedEntry(
+                    "No Date Title",
+                    "https://no-date.example.com",
+                    None,
+                ),
+                MockFeedParserFeedEntry(
+                    "Older Title",
+                    "https://older.example.com",
+                    struct_time((2025, 2, 27, 1, 0, 1, 0, 0, 0)),
+                ),
+            ]
+        ),
+    )
+
+    next_messages = rss.read()
+
+    assert len(next_messages) == 2
+    assert [message.id for message in next_messages] == [
+        "https://newer.example.com",
+        "https://newest.example.com",
+    ]

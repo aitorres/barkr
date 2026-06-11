@@ -37,11 +37,17 @@ class RSSConnection(Connection):
     supporting reading messages from a given feed.
     """
 
-    __slots__ = ("feed_url", "feed_message_callback", "feed_min_date")
+    __slots__ = (
+        "feed_url",
+        "feed_message_callback",
+        "feed_min_date",
+        "latest_entry_id",
+    )
 
     feed_url: str
     feed_message_callback: Callable[[str, str], str]
     feed_min_date: Optional[struct_time]
+    latest_entry_id: Optional[str]
 
     def __init__(
         self,
@@ -73,6 +79,7 @@ class RSSConnection(Connection):
         self.feed_url = feed_url
         self.feed_message_callback = feed_message_callback
         self.feed_min_date = None
+        self.latest_entry_id = None
 
         # Getting most recent post date
         try:
@@ -81,11 +88,20 @@ class RSSConnection(Connection):
             logger.error("Error on initial RSS feed fetch : %s", e)
         else:
             if feed.entries:
+                self.latest_entry_id = getattr(feed.entries[0], "link", None)
                 # Set the initial min_date to the most recent post's published date
-                self.feed_min_date = feed.entries[0].published_parsed
-                logger.info(
-                    "RSS (%s) initial min_date: %s", self.name, self.feed_min_date
-                )
+                initial_min_date = getattr(feed.entries[0], "published_parsed", None)
+                if initial_min_date is not None:
+                    self.feed_min_date = initial_min_date
+                    logger.info(
+                        "RSS (%s) initial min_date: %s", self.name, self.feed_min_date
+                    )
+                else:
+                    logger.info(
+                        "RSS (%s) initial min_date not set "
+                        "(latest entry has no published date).",
+                        self.name,
+                    )
             else:
                 logger.info(
                     "RSS (%s) initial min_date not set "
@@ -113,7 +129,16 @@ class RSSConnection(Connection):
 
         messages = []
         for entry in feed.entries:
-            if self.feed_min_date and entry.published_parsed <= self.feed_min_date:
+            entry_id = getattr(entry, "link", None)
+            if self.latest_entry_id and entry_id == self.latest_entry_id:
+                break
+
+            published_parsed = getattr(entry, "published_parsed", None)
+            if (
+                self.feed_min_date
+                and published_parsed is not None
+                and published_parsed <= self.feed_min_date
+            ):
                 continue
 
             message = Message(
@@ -125,7 +150,10 @@ class RSSConnection(Connection):
 
         # Updated min_date to the most recent post's published date
         if feed.entries:
-            self.feed_min_date = feed.entries[0].published_parsed
+            self.latest_entry_id = getattr(feed.entries[0], "link", None)
+            latest_published_parsed = getattr(feed.entries[0], "published_parsed", None)
+            if latest_published_parsed is not None:
+                self.feed_min_date = latest_published_parsed
 
         logger.info(
             "Fetched %d messages from RSS (%s) connection", len(messages), self.name
