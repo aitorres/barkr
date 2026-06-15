@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.15.0] - 2026-06-14
+
+### Added
+
+- Connection groups: you can (optionally) specify a `group` name for each connection. When specified, a connection will only relay messages to other connections in the same group.
+  - This is useful to run multiple, independent pipelines (groups) within the a single `Barkr` instance; for example, to sync two separate account pairs without cross-posting between them.
+  - The default behaviour (when no groups are specified) is to place all connections in a default group. This ensures backward compatibility with existing setups (`barkr` v0.14.6 and earlier).
+
+### Changed
+
+- Connections (and SDKs) are now lazy-loaded and will only be imported the first time you instantiate a connection of a given type, to reduce initial loading time and memory usage when running a `Barkr` instance scoped to a subset of connections.
+- Minor dependency updates.
+
 ## [0.14.6] - 2026-06-11
 
 ### Fixed
