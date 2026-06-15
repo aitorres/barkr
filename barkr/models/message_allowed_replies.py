@@ -3,16 +3,19 @@ Module to implement a generic enum to represent
 who can reply to a message.
 """
 
-from enum import Enum
-from typing import Optional, Union
+from __future__ import annotations
 
-from atproto_client.models import AppBskyFeedThreadgate
-from atproto_client.models.app.bsky.feed.threadgate import (
-    FollowerRule,
-    FollowingRule,
-    ListRule,
-    MentionRule,
-)
+from enum import Enum
+from typing import TYPE_CHECKING, Optional, Union
+
+if TYPE_CHECKING:
+    from atproto_client.models import AppBskyFeedThreadgate
+    from atproto_client.models.app.bsky.feed.threadgate import (
+        FollowerRule,
+        FollowingRule,
+        ListRule,
+        MentionRule,
+    )
 
 
 class MessageAllowedReplies(Enum):
@@ -45,6 +48,12 @@ class MessageAllowedReplies(Enum):
         # If no rules are provided, return None to signal no restrictions
         if not allowed_replies:
             return None
+
+        # Imported lazily to keep the baseline memory usage of this module low
+        # unless Bluesky is actually used.
+        from atproto_client.models import (  # pylint: disable=import-outside-toplevel
+            AppBskyFeedThreadgate,
+        )
 
         # If the only rule is EVERYONE, we can return None
         if allowed_replies == [MessageAllowedReplies.EVERYONE]:
