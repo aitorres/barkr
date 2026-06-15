@@ -22,8 +22,13 @@ class ConnectionMockup(Connection):
     and keeps track of posted messages in a list.
     """
 
-    def __init__(self, name: str, modes: list[ConnectionMode]) -> None:
-        super().__init__(name, modes)
+    def __init__(
+        self,
+        name: str,
+        modes: list[ConnectionMode],
+        group: str | None = None,
+    ) -> None:
+        super().__init__(name, modes, group)
         self.posted_messages: list[str] = []
         self.raise_exception_on_write: bool = False
 
@@ -328,3 +333,171 @@ def test_barkr_write_rate_limit() -> None:
         "TestCon0-TestMsg1",
         "TestCon0-TestMsg2",
     ]
+
+
+def test_barkr_default_group_relays_to_all() -> None:
+    """
+    When no group is provided, every connection lands in the default
+    group, preserving the historical behavior of relaying to all destinations.
+    """
+
+    reader = ConnectionMockup("Reader", [ConnectionMode.READ])
+    writer_1 = ConnectionMockup("Writer1", [ConnectionMode.WRITE])
+    writer_2 = ConnectionMockup("Writer2", [ConnectionMode.WRITE])
+
+    # All connections share the same implicit default group.
+    assert reader.group == "default"
+    assert writer_1.group == "default"
+    assert writer_2.group == "default"
+
+    barkr = Barkr([reader, writer_1, writer_2])
+    barkr.read()
+
+    expected = [
+        Message(
+            id="Reader-Id1",
+            message="Reader-TestMsg1",
+            source_connection="Reader",
+        ),
+        Message(
+            id="Reader-Id2",
+            message="Reader-TestMsg2",
+            source_connection="Reader",
+        ),
+    ]
+    assert _qs(barkr) == {"Reader": [], "Writer1": expected, "Writer2": expected}
+
+
+def test_barkr_groups_isolate_routing() -> None:
+    """
+    Messages from a reader are only relayed to writers in the same group.
+    """
+
+    reader_a = ConnectionMockup("ReaderA", [ConnectionMode.READ], group="a")
+    writer_a = ConnectionMockup("WriterA", [ConnectionMode.WRITE], group="a")
+    reader_b = ConnectionMockup("ReaderB", [ConnectionMode.READ], group="b")
+    writer_b = ConnectionMockup("WriterB", [ConnectionMode.WRITE], group="b")
+
+    barkr = Barkr([reader_a, writer_a, reader_b, writer_b])
+    barkr.read()
+
+    queues = _qs(barkr)
+
+    # Writer A only received Reader A's messages.
+    assert queues["WriterA"] == [
+        Message(
+            id="ReaderA-Id1",
+            message="ReaderA-TestMsg1",
+            source_connection="ReaderA",
+        ),
+        Message(
+            id="ReaderA-Id2",
+            message="ReaderA-TestMsg2",
+            source_connection="ReaderA",
+        ),
+    ]
+
+    # Writer B only received Reader B's messages.
+    assert queues["WriterB"] == [
+        Message(
+            id="ReaderB-Id1",
+            message="ReaderB-TestMsg1",
+            source_connection="ReaderB",
+        ),
+        Message(
+            id="ReaderB-Id2",
+            message="ReaderB-TestMsg2",
+            source_connection="ReaderB",
+        ),
+    ]
+
+    # Readers never accumulate messages in their own queues.
+    assert queues["ReaderA"] == []
+    assert queues["ReaderB"] == []
+
+
+def test_barkr_group_does_not_relay_to_other_group_writer() -> None:
+    """
+    A writer in a different group from the reader receives nothing, even when it
+    is the only writer available.
+    """
+
+    reader = ConnectionMockup("Reader", [ConnectionMode.READ], group="group-1")
+    writer = ConnectionMockup("Writer", [ConnectionMode.WRITE], group="group-2")
+
+    barkr = Barkr([reader, writer])
+    barkr.read()
+
+    assert _qs(barkr) == {"Reader": [], "Writer": []}
+
+
+def test_barkr_default_group_isolated_from_named_group() -> None:
+    """
+    A connection left in the default group does not exchange messages with a
+    connection placed in an explicit, differently-named group.
+    """
+
+    default_reader = ConnectionMockup("DefaultReader", [ConnectionMode.READ])
+    named_writer = ConnectionMockup(
+        "NamedWriter", [ConnectionMode.WRITE], group="named"
+    )
+
+    barkr = Barkr([default_reader, named_writer])
+    barkr.read()
+
+    assert _qs(barkr) == {"DefaultReader": [], "NamedWriter": []}
+
+
+def test_barkr_reader_relays_within_group_only_when_mixed() -> None:
+    """
+    With one reader and writers split across groups, only the same-group writer
+    receives the reader's messages.
+    """
+
+    reader = ConnectionMockup("Reader", [ConnectionMode.READ], group="shared")
+    same_group_writer = ConnectionMockup(
+        "SameWriter", [ConnectionMode.WRITE], group="shared"
+    )
+    other_group_writer = ConnectionMockup(
+        "OtherWriter", [ConnectionMode.WRITE], group="other"
+    )
+    default_writer = ConnectionMockup("DefaultWriter", [ConnectionMode.WRITE])
+
+    barkr = Barkr([reader, same_group_writer, other_group_writer, default_writer])
+    barkr.read()
+
+    queues = _qs(barkr)
+    expected = [
+        Message(
+            id="Reader-Id1",
+            message="Reader-TestMsg1",
+            source_connection="Reader",
+        ),
+        Message(
+            id="Reader-Id2",
+            message="Reader-TestMsg2",
+            source_connection="Reader",
+        ),
+    ]
+    assert queues["SameWriter"] == expected
+    assert queues["OtherWriter"] == []
+    assert queues["DefaultWriter"] == []
+
+
+def test_barkr_read_write_within_group_end_to_end() -> None:
+    """
+    A grouped read/write pair delivers messages end-to-end while an unrelated
+    group remains untouched.
+    """
+
+    reader_a = ConnectionMockup("ReaderA", [ConnectionMode.READ], group="a")
+    writer_a = ConnectionMockup("WriterA", [ConnectionMode.WRITE], group="a")
+    writer_b = ConnectionMockup("WriterB", [ConnectionMode.WRITE], group="b")
+
+    barkr = Barkr([reader_a, writer_a, writer_b])
+    barkr.read()
+    barkr.write()
+
+    assert writer_a.posted_messages == ["ReaderA-TestMsg1", "ReaderA-TestMsg2"]
+    assert writer_b.posted_messages == []
+    assert _qs(barkr) == {"ReaderA": [], "WriterA": [], "WriterB": []}

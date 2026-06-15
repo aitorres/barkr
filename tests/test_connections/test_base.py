@@ -72,6 +72,43 @@ def test_connection_mode() -> None:
         Connection("Duplicate Modes", [ConnectionMode.READ, ConnectionMode.READ])
 
 
+def test_connection_default_group() -> None:
+    """
+    Tests that a connection created without an explicit group is assigned to
+    the default catch-all group, preserving backward-compatible behavior.
+    """
+
+    connection = Connection("No Group", [ConnectionMode.READ])
+    assert connection.group == "default"
+
+    # Passing None explicitly also falls back to the default group.
+    explicit_none = Connection("None Group", [ConnectionMode.READ], group=None)
+    assert explicit_none.group == "default"
+
+
+def test_connection_explicit_group() -> None:
+    """
+    Tests that an explicit group is stored on the connection as-is.
+    """
+
+    connection = Connection("Grouped", [ConnectionMode.READ], group="my-group")
+    assert connection.group == "my-group"
+
+
+def test_thread_aware_connection_default_group() -> None:
+    """
+    Tests that ThreadAwareConnection also honors the optional group argument.
+    """
+
+    default_connection = ThreadAwareConnection("Default", [ConnectionMode.READ])
+    assert default_connection.group == "default"
+
+    grouped_connection = ThreadAwareConnection(
+        "Grouped", [ConnectionMode.READ], group="thread-group"
+    )
+    assert grouped_connection.group == "thread-group"
+
+
 def test_connection_handles_posted_message_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Tests that the Connection class handles message IDs correctly

@@ -35,7 +35,12 @@ class MastodonActivityBotConnection(Connection):
     api_url: str
 
     def __init__(
-        self, name: str, modes: list[ConnectionMode], api_url: str, password: str
+        self,
+        name: str,
+        modes: list[ConnectionMode],
+        api_url: str,
+        password: str,
+        group: Optional[str] = None,
     ) -> None:
         """
         Initializes the connection with a name, API URL, and password.
@@ -44,8 +49,9 @@ class MastodonActivityBotConnection(Connection):
         :param modes: A list of modes for the connection
         :param api_url: The API URL for the ActivityBot send action
         :param password: The password for the ActivityBot
+        :param group: (optional) The routing group for the connection
         """
-        super().__init__(name, modes)
+        super().__init__(name, modes, group)
         self.supported_message_type = MessageType.TEXT_MEDIA
 
         logger.info("Initializing MastodonActivityBot (%s) connection", self.name)

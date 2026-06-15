@@ -8,6 +8,7 @@ with the Telegram API.
 
 import asyncio
 import logging
+from typing import Optional
 
 from telegram.ext import Application, ApplicationBuilder
 
@@ -30,7 +31,12 @@ class TelegramConnection(Connection):
     chat_id: str
 
     def __init__(
-        self, name: str, modes: list[ConnectionMode], token: str, chat_id: str
+        self,
+        name: str,
+        modes: list[ConnectionMode],
+        token: str,
+        chat_id: str,
+        group: Optional[str] = None,
     ) -> None:
         """
         Initializes the connection with a name and a list of modes
@@ -45,8 +51,9 @@ class TelegramConnection(Connection):
         :param modes: A list of modes for the connection
         :param token: The token for the Telegram bot
         :param chat_id: The chat id for the chat or channel
+        :param group: (optional) The routing group for the connection
         """
-        super().__init__(name, modes)
+        super().__init__(name, modes, group)
 
         logger.info("Initializing Telegram (%s) connection", self.name)
         if self.modes != [ConnectionMode.WRITE]:

@@ -57,6 +57,7 @@ class RSSConnection(Connection):
         feed_message_callback: Callable[
             [str, str], str
         ] = default_feed_message_callback,
+        group: Optional[str] = None,
     ) -> None:
         """
         Initializes the connection with a name and a list of modes, as well as the
@@ -68,8 +69,9 @@ class RSSConnection(Connection):
         :param name: The name of the connection
         :param modes: A list of modes for the connection
         :param feed_url: The URL of the RSS feed
+        :param group: (optional) The routing group for the connection
         """
-        super().__init__(name, modes)
+        super().__init__(name, modes, group)
 
         logger.info("Initializing RSS (%s) connection", self.name)
         if self.modes != [ConnectionMode.READ]:

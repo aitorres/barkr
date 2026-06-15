@@ -115,6 +115,56 @@ barkr.write_message(
 
 Always keep in mind proper secret management practices when using Barkr: instead of hardcoding access tokens / cookies / user and passwords, use tools like environment variables, `dotenv` or other secret managers!
 
+### Connection groups
+
+By default, every read-mode connection in a `Barkr` instance relays messages to every write-mode connection (minus the message's own source, if read-write).
+
+You can optionally assign each connection to a `group` to create independent pipelines/relays within the same `Barkr` instance.
+
+Connections only relay messages to other connections that share the **same** group. The `group` argument is optional: when omitted, the connection is placed in a default group, i.e. if you don't specify any groups, all messages from read-mode connections will be relayed to all write-mode connections.
+
+```python
+from barkr.main import Barkr
+from barkr.connections import ConnectionMode, BlueskyConnection, MastodonConnection
+
+barkr = Barkr(
+    [
+        # Group "account-1": these two only sync with each other.
+        BlueskyConnection(
+            "Bluesky account 1",
+            [ConnectionMode.READ, ConnectionMode.WRITE],
+            "<HANDLE 1>",
+            "<PASSWORD 1>",
+            group="account-1",
+        ),
+        MastodonConnection(
+            "Mastodon account 1",
+            [ConnectionMode.READ, ConnectionMode.WRITE],
+            "<ACCESS TOKEN 1>",
+            "<INSTANCE URL 1>",
+            group="account-1",
+        ),
+        # Group "account-2": fully isolated from "account-1".
+        BlueskyConnection(
+            "Bluesky account 2",
+            [ConnectionMode.READ, ConnectionMode.WRITE],
+            "<HANDLE 2>",
+            "<PASSWORD 2>",
+            group="account-2",
+        ),
+        MastodonConnection(
+            "Mastodon account 2",
+            [ConnectionMode.READ, ConnectionMode.WRITE],
+            "<ACCESS TOKEN 2>",
+            "<INSTANCE URL 2>",
+            group="account-2",
+        ),
+    ]
+)
+
+barkr.start()
+```
+
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change. Contributions for issues that are already open by maintainers are welcome and encouraged.

@@ -9,6 +9,7 @@ with the Discord API.
 
 import asyncio
 import logging
+from typing import Optional
 
 import discord
 
@@ -32,7 +33,12 @@ class DiscordConnection(Connection):
     channel_id: int
 
     def __init__(
-        self, name: str, modes: list[ConnectionMode], token: str, channel_id: int
+        self,
+        name: str,
+        modes: list[ConnectionMode],
+        token: str,
+        channel_id: int,
+        group: Optional[str] = None,
     ) -> None:
         """
         Initializes the connection with a name and a list of modes, as well
@@ -57,8 +63,9 @@ class DiscordConnection(Connection):
         :param name: The name of the connection
         :param modes: A list of modes for the connection
         :param token: The token for the Discord bot
+        :param group: (optional) The routing group for the connection
         """
-        super().__init__(name, modes)
+        super().__init__(name, modes, group)
 
         logger.info("Initializing Discord (%s) connection", self.name)
         if self.modes != [ConnectionMode.WRITE]:

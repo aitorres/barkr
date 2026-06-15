@@ -38,6 +38,7 @@ class TwitterConnection(ThreadAwareConnection):
         access_token: str,
         access_token_secret: str,
         bearer_token: str,
+        group: Optional[str] = None,
     ) -> None:
         """
         Initializes the connection with a name and a list of modes
@@ -58,8 +59,9 @@ class TwitterConnection(ThreadAwareConnection):
         :param access_token: The access token for the authenticated user
         :param access_token_secret: The access token secret for the authenticated user
         :param bearer_token: The bearer token for the Twitter API v2
+        :param group: (optional) The routing group for the connection
         """
-        super().__init__(name, modes)
+        super().__init__(name, modes, group)
 
         logger.info("Initializing Twitter (%s) connection", self.name)
         if self.modes != [ConnectionMode.WRITE]:

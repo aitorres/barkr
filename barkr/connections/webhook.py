@@ -42,6 +42,7 @@ class WebhookConnection(Connection):
         webhook_endpoint: str,
         payload_key: str = DEFAULT_WRITE_KEY,
         auth_token: Optional[str] = None,
+        group: Optional[str] = None,
     ) -> None:
         """
         Initialize the WebhookConnection with the specified configuration.
@@ -51,10 +52,11 @@ class WebhookConnection(Connection):
         :param webhook_endpoint: The URL to send webhook payloads to
         :param payload_key: The JSON key to use for message content (default: "content")
         :param auth_token: Optional auth token sent in Authorization header
+        :param group: (optional) The routing group for the connection
         :raises NotImplementedError: If modes other than WRITE are specified
         :raises ValueError: If required parameters are missing or invalid
         """
-        super().__init__(name, modes)
+        super().__init__(name, modes, group)
 
         logger.info("Initializing Webhook (%s) connection", self.name)
         if self.modes != [ConnectionMode.WRITE]:

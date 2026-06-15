@@ -49,6 +49,7 @@ class MastodonConnection(ThreadAwareConnection):
         modes: list[ConnectionMode],
         access_token: str,
         instance_url: str,
+        group: Optional[str] = None,
     ) -> None:
         """
         Initializes the connection with a name and a list of modes
@@ -62,8 +63,9 @@ class MastodonConnection(ThreadAwareConnection):
         :param modes: A list of modes for the connection
         :param access_token: The access token for the authenticated user
         :param instance_url: The URL of the Mastodon instance
+        :param group: (optional) The routing group for the connection
         """
-        super().__init__(name, modes)
+        super().__init__(name, modes, group)
         self.supported_message_type = MessageType.TEXT_MEDIA
 
         self.service = Mastodon(

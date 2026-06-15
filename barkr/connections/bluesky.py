@@ -97,6 +97,7 @@ class BlueskyConnection(ThreadAwareConnection):
         handle: str,
         password: str,
         compress_images: bool = False,
+        group: Optional[str] = None,
     ) -> None:
         """
         Initializes the connection with a name and a list of modes
@@ -111,9 +112,10 @@ class BlueskyConnection(ThreadAwareConnection):
         :param handle: The handle of the authenticated user
         :param password: The app password of the authenticated user
         :param compress_images: Whether to compress images before posting
+        :param group: (optional) The routing group for the connection
         """
 
-        super().__init__(name, modes)
+        super().__init__(name, modes, group)
         self.supported_message_type = MessageType.TEXT_MEDIA
 
         self.service = Client(

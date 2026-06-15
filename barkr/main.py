@@ -80,6 +80,11 @@ class Barkr:
             if ConnectionMode.WRITE in connection.modes
         }
 
+        # Connections only relay messages to other connections in the same group
+        connection_groups = {
+            connection.name: connection.group for connection in self.connections
+        }
+
         for connection in self.connections:
             # Reading is only allowed for connections with the READ mode
             if ConnectionMode.READ not in connection.modes:
@@ -90,13 +95,18 @@ class Barkr:
             if messages:
                 with self.message_queues_lock:
                     for name in self.message_queues:
-                        if name != connection.name and name in write_connections:
+                        if (
+                            name != connection.name
+                            and name in write_connections
+                            and connection_groups[name] == connection.group
+                        ):
                             self.message_queues[name].extend(messages)
                             logger.info(
-                                "Added %s message(s) from %s to %s queue",
+                                "Added %s message(s) from %s to %s queue (group '%s')",
                                 len(messages),
                                 connection.name,
                                 name,
+                                connection.group,
                             )
 
     def write(self) -> None:

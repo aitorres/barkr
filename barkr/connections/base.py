@@ -13,6 +13,10 @@ from barkr.models import Message, MessageType
 
 logger = logging.getLogger()
 
+# Default group used when a connection is created without an explicit
+# group. Connections only relay messages to other connections in the same group.
+DEFAULT_CONNECTION_GROUP: str = "default"
+
 
 class ConnectionMode(Enum):
     """
@@ -31,23 +35,40 @@ class Connection:
     Subclasses should implement the _fetch and _post methods, which will
     be called depending on the modes each connection is set up with.
 
-    The base clase already supports a validation to avoid duplicate posting
+    The base class already supports a validation to avoid duplicate posting
     of messages already posted by one connection on subsequent fetches.
     """
 
-    __slots__ = ("name", "modes", "posted_message_ids", "supported_message_type")
+    __slots__ = (
+        "name",
+        "modes",
+        "posted_message_ids",
+        "supported_message_type",
+        "group",
+    )
 
     name: str
     modes: list[ConnectionMode]
     posted_message_ids: BoundedIdSet
     supported_message_type: MessageType
+    group: str
 
-    def __init__(self, name: str, modes: list[ConnectionMode]) -> None:
+    def __init__(
+        self,
+        name: str,
+        modes: list[ConnectionMode],
+        group: Optional[str] = None,
+    ) -> None:
         """
         Initializes the connection with a name and a list of modes
 
+        Connections only relay messages to other connections that share the same
+        group. When `group` is omitted, the connection is assigned to a default group.
+
         :param name: The name of the connection
         :param modes: A list of modes for the connection
+        :param group: (optional) The routing group for the connection. Defaults
+            to the default group when not provided.
         """
 
         if not modes:
@@ -58,9 +79,12 @@ class Connection:
 
         self.name = name
         self.modes = modes
+        self.group = group or DEFAULT_CONNECTION_GROUP
         self.posted_message_ids = BoundedIdSet()
         # Default supported message type; subclasses may override in __init__.
         self.supported_message_type = MessageType.TEXT_ONLY
+
+        logger.info("Connection %s assigned to group '%s'", self.name, self.group)
 
     def read(self) -> list[Message]:
         """
