@@ -17,9 +17,6 @@ from atproto_client.models import (
 from atproto_client.models.blob_ref import BlobRef
 from PIL import Image
 from requests.exceptions import RequestException
-
-from barkr.connections import BlueskyConnection, ConnectionMode
-from barkr.models import Message
 from tests.mocks.bluesky import (
     MockAuthor,
     MockExternal,
@@ -34,6 +31,9 @@ from tests.mocks.bluesky import (
     MockUploadBlobResponse,
     MockViewer,
 )
+
+from barkr.connections import BlueskyConnection, ConnectionMode
+from barkr.models import Message
 
 
 def test_bluesky_connection(monkeypatch: pytest.MonkeyPatch) -> None:

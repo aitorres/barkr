@@ -16,6 +16,7 @@ from atproto_client.models import (
 from atproto_client.models.app.bsky.feed.post import Record as PostRecord
 from atproto_client.models.blob_ref import BlobRef
 from bs4 import BeautifulSoup
+from tests.mocks.bluesky import MockRecord
 
 from barkr.connections.internal.bluesky_helpers import (
     extract_mention_facets,
@@ -24,7 +25,6 @@ from barkr.connections.internal.bluesky_helpers import (
     process_text_with_embed,
 )
 from barkr.models.message_mention import MessageMention
-from tests.mocks.bluesky import MockRecord
 
 
 def test_get_meta_tag_from_html_metadata() -> None:

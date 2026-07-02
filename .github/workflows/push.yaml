@@ -25,10 +25,10 @@ jobs:
       - name: Install dependencies with Poetry
         run: poetry install --no-interaction --no-root
       - name: Check types with mypy
-        run: poetry run mypy barkr
+        run: poetry run mypy python/barkr
       - name: Lint code with pylint and flake8
         run: |
-          poetry run pylint barkr
+          poetry run pylint python/barkr
           poetry run flake8 --extend-exclude ".venv"
       - name: Run tests with pytest
         run: poetry run pytest --cov=barkr --cov-fail-under=85 --cov-report=term-missing -vvv
