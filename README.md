@@ -1,5 +1,7 @@
 # Barkr
 
+> **Note**: This is an experimental, development branch for exploring a port of `barkr` to go with Python interoperability. The current stable release is available on [PyPI](https://pypi.org/project/barkr/) and on the `main` branch.
+
 **Barkr**[^1] is a social media cross-posting tool written in Python: set it up and never worry about manually posting the same message to multiple channels ever again!
 
 With **Barkr** you can setup a series of channels (e.g. social media accounts) to read messages from and / or post messages to. You can mix and match read / write modes, and add multiple accounts of the same type of channel as well without worrying that the same message will be re-posted to a channel it comes from.
