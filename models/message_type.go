@@ -5,7 +5,10 @@ package models
 type MessageType int
 
 const (
-	MessageTypeTextOnly  MessageType = iota // text-only messages
-	MessageTypeMediaOnly                    // media-only messages
-	MessageTypeTextMedia                    // can contain text and/or media
+	// MessageTypeTextOnly indicates that the message is text-only
+	MessageTypeTextOnly MessageType = iota
+	// MessageTypeMediaOnly indicates that the message is media-only
+	MessageTypeMediaOnly
+	// MessageTypeTextMedia indicates that the message can contain text and/or media
+	MessageTypeTextMedia
 )

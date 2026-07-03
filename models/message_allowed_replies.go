@@ -4,9 +4,14 @@ package models
 type MessageAllowedReplies int
 
 const (
-	MessageAllowedRepliesEveryone  MessageAllowedReplies = iota // everyone can reply
-	MessageAllowedRepliesFollowers                              // only followers can reply
-	MessageAllowedRepliesFollowing                              // only accounts the user is following can reply
-	MessageAllowedRepliesMentioned                              // only mentioned users can reply
-	MessageAllowedRepliesNoOne                                  // no one can reply
+	// MessageAllowedRepliesEveryone indicates that everyone can reply
+	MessageAllowedRepliesEveryone MessageAllowedReplies = iota
+	// MessageAllowedRepliesFollowers indicates that only followers can reply
+	MessageAllowedRepliesFollowers
+	// MessageAllowedRepliesFollowing indicates that only accounts the user is following can reply
+	MessageAllowedRepliesFollowing
+	// MessageAllowedRepliesMentioned indicates that only mentioned users can reply
+	MessageAllowedRepliesMentioned
+	// MessageAllowedRepliesNoOne indicates that no one can reply
+	MessageAllowedRepliesNoOne
 )

@@ -7,21 +7,23 @@ import "fmt"
 type MessageVisibility int
 
 const (
-	MessageVisibilityPublic   MessageVisibility = iota // public and visible to everyone
-	MessageVisibilityUnlisted                          // unlisted but accessible via a direct link
-	MessageVisibilityPrivate                           // private and visible only to the user's followers
-	MessageVisibilityDirect                            // direct and visible only to specific users (e.g. a chat or direct message)
+	// MessageVisibilityPublic indicates that the message is public and visible to everyone
+	MessageVisibilityPublic MessageVisibility = iota
+	// MessageVisibilityUnlisted indicates that the message is unlisted but accessible via a direct link
+	MessageVisibilityUnlisted
+	// MessageVisibilityPrivate indicates that the message is private and visible only to the user's followers
+	MessageVisibilityPrivate
+	// MessageVisibilityDirect indicates that the message is direct and visible only to specific users (e.g. a chat or direct message)
+	MessageVisibilityDirect
 )
 
-var (
-	// unsupportedMessageVisibilities lists the [MessageVisibility] values that we do not support
-	// on barkr, to prevent any private message leaks. Any [Message] whose visibility is set to one
-	// of these values will be dropped silently.
-	unsupportedMessageVisibilities = []MessageVisibility{
-		MessageVisibilityDirect,
-		MessageVisibilityPrivate,
-	}
-)
+// unsupportedMessageVisibilities lists the [MessageVisibility] values that we do not support
+// on barkr, to prevent any private message leaks. Any [Message] whose visibility is set to one
+// of these values will be dropped silently.
+var unsupportedMessageVisibilities = []MessageVisibility{
+	MessageVisibilityDirect,
+	MessageVisibilityPrivate,
+}
 
 // String returns the string representation of the [MessageVisibility].
 func (mv MessageVisibility) String() string {

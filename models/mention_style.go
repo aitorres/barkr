@@ -12,11 +12,16 @@ import (
 type MentionStyle int
 
 const (
-	MentionStylePlain          MentionStyle = iota // [Message] is rendered as-is, with no mention enrichment
-	MentionStyleAppendURL                          // user mentions on the [Message] are enriched with the profile URL in parenthesis next to it
-	MentionStyleReplaceWithURL                     // user mentions on the [Message] are replaced with the profile URL
-	MentionStyleMarkdownLink                       // user mentions on the [Message] are linked to the profile URL using Markdown syntax
-	MentionStyleHTMLLink                           // user mentions on the [Message] are linked to the profile URL using HTML syntax (anchor tag)
+	// MentionStylePlain indicates that the [Message] is rendered as-is, with no mention enrichment
+	MentionStylePlain MentionStyle = iota
+	// MentionStyleAppendURL indicates that user mentions on the [Message] are enriched with the profile URL in parenthesis next to it
+	MentionStyleAppendURL
+	// MentionStyleReplaceWithURL indicates that user mentions on the [Message] are replaced with the profile URL
+	MentionStyleReplaceWithURL
+	// MentionStyleMarkdownLink indicates that user mentions on the [Message] are linked to the profile URL using Markdown syntax
+	MentionStyleMarkdownLink
+	// MentionStyleHTMLLink indicates that user mentions on the [Message] are linked to the profile URL using HTML syntax (anchor tag)
+	MentionStyleHTMLLink
 )
 
 // String returns the string representation of the [MentionStyle].
@@ -57,7 +62,7 @@ func ReplaceMentions(text string, mentions []MessageMention, style MentionStyle)
 		start := cursor + index
 		contentParts = append(contentParts, text[cursor:start])
 
-		replacement := mention.Username
+		var replacement string
 		switch style {
 		case MentionStyleAppendURL:
 			replacement = fmt.Sprintf("%s (%s)", mention.Username, mention.URL)

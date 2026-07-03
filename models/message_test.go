@@ -317,7 +317,6 @@ func TestMessageGetContent(t *testing.T) {
 
 	for _, tc := range tt {
 		got, err := tc.message.GetContent(tc.mentionStyle)
-
 		if err != nil {
 			t.Errorf("Unexpected error for mention style %v: %v", tc.mentionStyle, err)
 		}
