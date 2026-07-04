@@ -1,10 +1,17 @@
 repos:
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v2.12.2
-    hooks:
-      - id: golangci-lint
   - repo: local
     hooks:
+      - id: golangci-lint
+        name: golangci-lint
+        # Pass only the staged Go files so linting applies to the changes being
+        # committed, not to other (e.g. untracked) files in the same package.
+        entry: golangci-lint run
+        language: golang
+        additional_dependencies:
+          - github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+        types: [go]
+        pass_filenames: true
+        require_serial: true
       - id: isort
         name: Sort imports with isort
         entry: cd python && poetry run isort
