@@ -4,6 +4,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
     strategy:
       matrix:
         python-version: [ '3.10', '3.11', '3.12', '3.13', '3.14' ]
@@ -25,10 +28,10 @@ jobs:
       - name: Install dependencies with Poetry
         run: poetry install --no-interaction --no-root
       - name: Check types with mypy
-        run: poetry run mypy python/barkr
+        run: poetry run mypy barkr
       - name: Lint code with pylint and flake8
         run: |
-          poetry run pylint python/barkr
+          poetry run pylint barkr
           poetry run flake8 --extend-exclude ".venv"
       - name: Run tests with pytest
         run: poetry run pytest --cov=barkr --cov-fail-under=85 --cov-report=term-missing -vvv

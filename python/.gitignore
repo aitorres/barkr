@@ -13,6 +13,9 @@ develop-eggs/
 dist/
 downloads/
 eggs/
+
+# README copied from the repo root at build time
+/README.md
 .eggs/
 lib/
 lib64/

@@ -46,7 +46,7 @@ Repository = "https://github.com/aitorres/barkr"
 
 [tool.poetry]
 requires-poetry = ">=2.0"
-packages = [{ include = "barkr", from = "py" }]
+packages = [{ include = "barkr" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -73,13 +73,13 @@ types-beautifulsoup4 = "^4.12.0.20250516"
 types-requests = "^2.33.0.20260518"
 
 [tool.isort]
-src_paths = ["python/barkr"]
+src_paths = ["barkr"]
 profile = "black"
 line_length = 90
 
 [tool.pytest.ini_options]
-pythonpath = ["python"]
-testpaths = ["python/tests"]
+pythonpath = ["."]
+testpaths = ["tests"]
 
 [tool.mypy]
 warn_return_any = true

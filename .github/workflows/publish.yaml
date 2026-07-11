@@ -27,13 +27,17 @@ jobs:
           installer-parallel: true
       - name: Install dependencies with Poetry
         run: poetry install --no-interaction --no-root
+        working-directory: python
+      - name: Copy README for packaging
+        run: cp README.md python/README.md
       - name: Build package
         run: poetry build
+        working-directory: python
       - name: Store the distribution packages
         uses: actions/upload-artifact@v7
         with:
           name: python-package-distributions
-          path: dist/
+          path: python/dist/
       - name: Extract changelog content for release
         id: changelog_content
         run: |
