@@ -1,13 +1,3 @@
-// Package connections implements the base and specialized [Connection] types to handle
-// the integration with specific platforms, social media services, and other external [Message]
-// sources.
-//
-// A [Connection] is responsible for managing the lifecycle of a connection to an external
-// services to send and/or receive [Message]s.
-//
-// The package provides a base [Connection] type that can be extended to implement specific
-// types for a given platform. It also provides multiple built-in, specialized [Connection] types
-// for popular platforms and services.
 package connections
 
 import "container/list"
