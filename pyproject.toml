@@ -29,12 +29,12 @@ dynamic = ["classifiers"]
 dependencies = [
     "beautifulsoup4 (>=4.15.0,<5.0.0)",
     "lxml (>=6.1.1,<7.0.0)",
-    "mastodon-py (>=2.2.1,<3.0.0)",
+    "mastodon-py (>=2.2.2,<3.0.0)",
     "tweepy (>=4.17.0,<5.0.0)",
     "atproto (>=0.0.69,<0.0.70)",
     "python-telegram-bot (>=22.8,<23.0)",
     "discord-py (>=2.7.1,<3.0.0)",
-    "feedparser (>=6.0.12,<7.0.0)",
+    "feedparser (>=6.0.14,<7.0.0)",
     "requests (>=2.34.2,<3.0.0)",
     "pillow (>=12.3.0,<13.0.0)",
 ]
@@ -62,14 +62,14 @@ classifiers = [
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.1.1"
 pytest-cov = "^7.1.0"
-pre-commit = "^4.6.0"
+pre-commit = "^4.6.1"
 flake8 = "^7.3.0"
 black = "^26.5.1"
-mypy = "^2.2.0"
+mypy = "^2.3.0"
 pylint = "^4.0.6"
 isort = "^8.0.1"
 types-beautifulsoup4 = "^4.12.0.20250516"
-types-requests = "^2.33.0.20260518"
+types-requests = "^2.33.0.20260712"
 
 [tool.isort]
 src_paths = ["barkr", "tests"]
