@@ -871,7 +871,7 @@ def test_bluesky_post_recovers_from_network_error(
     bluesky = _create_test_bluesky_connection()
 
     def raise_network_error(*_args, **_kwargs):
-        raise NetworkError("Temporary failure in name resolution")
+        raise NetworkError()
 
     monkeypatch.setattr(
         "barkr.connections.bluesky.Client.send_post", raise_network_error
@@ -914,7 +914,7 @@ def test_bluesky_post_network_error_preserves_min_id_when_recovery_feed_fetch_fa
     connection.min_id = original_min_id
 
     def raise_network_error(*_args, **_kwargs):
-        raise NetworkError("Temporary failure in name resolution")
+        raise NetworkError()
 
     monkeypatch.setattr(
         "barkr.connections.bluesky.Client.send_post", raise_network_error
