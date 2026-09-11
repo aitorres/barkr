@@ -41,13 +41,16 @@ class Barkr:
         If a `write_rate_limit` is provided, Barkr will only write up to that
         many messages per write-thread polling interval.
 
-        :param connections: A list of connections to be used by the Barkr instance
+        :param connections: Connections with unique names, including across groups
         :param polling_interval: The interval to wait between polling requests, in seconds
         :param write_rate_limit: (optional) The rate limit for writing messages
         """
 
         if not connections:
             raise ValueError("Must provide at least one connection!")
+
+        if len({connection.name for connection in connections}) != len(connections):
+            raise ValueError("Connection names must be unique within a Barkr instance!")
 
         if polling_interval < 1:
             raise ValueError("Polling interval must be at least 1 second!")

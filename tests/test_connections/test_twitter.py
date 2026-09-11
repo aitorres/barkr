@@ -158,8 +158,7 @@ def test_twitter_thread_support(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(mock_client.posted_statuses) == 1
     assert mock_client.posted_statuses[0] == ("Thread start", None)
 
-    assert ("source", "source_1") in twitter.message_id_map
-    assert twitter.message_id_map[("source", "source_1")]["Twitter Connection"] == 1
+    assert twitter.resolve_reply_to_id("source", "source_1") == 1
 
     twitter.write(
         [
@@ -175,8 +174,7 @@ def test_twitter_thread_support(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(mock_client.posted_statuses) == 2
     assert mock_client.posted_statuses[1] == ("Thread reply", 1)
 
-    assert ("source", "source_2") in twitter.message_id_map
-    assert twitter.message_id_map[("source", "source_2")]["Twitter Connection"] == 2
+    assert twitter.resolve_reply_to_id("source", "source_2") == 2
 
     twitter.write(
         [
@@ -244,10 +242,8 @@ def test_twitter_multiple_connections_thread_mapping(
     assert len(mock_client_1.posted_statuses) == 1
     assert len(mock_client_2.posted_statuses) == 1
 
-    key = ("source", "source_1")
-    assert key in TwitterConnection.message_id_map
-    assert TwitterConnection.message_id_map[key]["Twitter Connection 1"] == 1
-    assert TwitterConnection.message_id_map[key]["Twitter Connection 2"] == 1
+    assert twitter_1.resolve_reply_to_id("source", "source_1") == 1
+    assert twitter_2.resolve_reply_to_id("source", "source_1") == 1
 
     reply_message = Message(
         id="source_2",

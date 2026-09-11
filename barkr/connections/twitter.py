@@ -82,7 +82,7 @@ class TwitterConnection(ThreadAwareConnection):
 
         Supports posting replies/threads by using the reply_to_id field
         on messages, which is resolved to the corresponding tweet ID
-        in this connection using the shared message ID map.
+        using this connection's own message ID map.
 
         :param messages: A list of messages to post as tweets
         :return: A list of message IDs

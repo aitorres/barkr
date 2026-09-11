@@ -123,6 +123,8 @@ You can optionally assign each connection to a `group` to create independent pip
 
 Connections only relay messages to other connections that share the **same** group. The `group` argument is optional: when omitted, the connection is placed in a default group, i.e. if you don't specify any groups, all messages from read-mode connections will be relayed to all write-mode connections.
 
+Connection names must be unique within a `Barkr` instance, even across different groups. Duplicate names raise `ValueError` during initialization. Each destination connection owns its reply mappings; these mappings are not shared between connection objects.
+
 ```python
 from barkr.main import Barkr
 from barkr.connections import ConnectionMode, BlueskyConnection, MastodonConnection

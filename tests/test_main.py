@@ -6,7 +6,7 @@ from collections import deque
 
 import pytest
 
-from barkr.connections.base import Connection, ConnectionMode
+from barkr.connections.base import Connection, ConnectionMode, ThreadAwareConnection
 from barkr.main import Barkr
 from barkr.models import Message
 
@@ -62,6 +62,33 @@ def test_barkr_no_connections() -> None:
 
     with pytest.raises(ValueError):
         Barkr([])
+
+
+@pytest.mark.parametrize("groups", [(None, None), ("a", "a"), ("a", "b")])
+@pytest.mark.parametrize("mode", [ConnectionMode.READ, ConnectionMode.WRITE])
+def test_barkr_duplicate_connection_names(
+    groups: tuple[str | None, str | None], mode: ConnectionMode
+) -> None:
+    """Reject name collisions regardless of connection group or mode."""
+    first = ConnectionMockup("duplicate", [mode], group=groups[0])
+    second = ConnectionMockup("duplicate", [ConnectionMode.WRITE], group=groups[1])
+
+    with pytest.raises(ValueError, match="Connection names must be unique"):
+        Barkr([first, second])
+
+
+def test_barkr_instances_can_reuse_connection_names() -> None:
+    """Independent instances can reuse names without sharing replies or queues."""
+    first = ThreadAwareConnection("destination", [ConnectionMode.WRITE])
+    second = ThreadAwareConnection("destination", [ConnectionMode.WRITE])
+    first_app = Barkr([first])
+    second_app = Barkr([second])
+
+    first.store_message_mapping("source", "parent", "first-post")
+    assert second.resolve_reply_to_id("source", "parent") is None
+
+    first_app.message_queues["destination"].append(Message("1", "hello", "source"))
+    assert not second_app.message_queues["destination"]
 
 
 def test_barkr_invalid_polling_interval() -> None:

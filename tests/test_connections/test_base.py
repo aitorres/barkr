@@ -431,3 +431,32 @@ def test_thread_aware_connection_message_mapping() -> None:
 
     resolved_none = connection_a.resolve_reply_to_id("twitter", "nonexistent")
     assert resolved_none is None
+
+
+@pytest.mark.parametrize("group", ["a", "b"])
+def test_thread_aware_connection_mapping_isolation(group: str) -> None:
+    """Same-name connections must not share mappings, even within the same group."""
+    first = ThreadAwareConnection("destination", [ConnectionMode.WRITE], group="a")
+    second = ThreadAwareConnection("destination", [ConnectionMode.WRITE], group=group)
+
+    assert first.message_id_map is not second.message_id_map
+    assert first.message_id_map_lock is not second.message_id_map_lock
+
+    first.store_message_mapping("source", "parent", "first-post")
+    assert second.resolve_reply_to_id("source", "parent") is None
+
+    second.store_message_mapping("source", "parent", "second-post")
+    assert first.resolve_reply_to_id("source", "parent") == "first-post"
+    assert second.resolve_reply_to_id("source", "parent") == "second-post"
+
+
+def test_thread_aware_connection_mapping_updates() -> None:
+    """Mapping updates affect only the specified source and message ID."""
+    connection = ThreadAwareConnection("destination", [ConnectionMode.WRITE])
+    connection.store_message_mapping("source-a", "parent", "first-post")
+    connection.store_message_mapping("source-b", "parent", "other-post")
+    connection.store_message_mapping("source-a", "parent", "updated-post")
+
+    assert connection.resolve_reply_to_id("source-a", "parent") == "updated-post"
+    assert connection.resolve_reply_to_id("source-b", "parent") == "other-post"
+    assert connection.resolve_reply_to_id("source-a", "missing") is None

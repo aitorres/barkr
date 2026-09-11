@@ -12,7 +12,7 @@ from typing import Any, Final, Iterable
 POSTED_MESSAGE_IDS_MAX: Final[int] = 10_000
 
 # Maximum number of source -> destination message-id mappings retained
-# class-wide for ``ThreadAwareConnection`` instances.
+# per ``ThreadAwareConnection`` instance.
 MESSAGE_ID_MAP_MAX: Final[int] = 50_000
 
 

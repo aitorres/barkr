@@ -181,19 +181,28 @@ class ThreadAwareConnection(Connection):
     Extended Connection class that supports reply-chain (thread) tracking
     across connections.
 
-    This class maintains a shared mapping of message IDs across different connections,
-    enabling self-reply threads to be preserved when crossposting.
+    Each destination connection maintains its own mapping of source message IDs
+    to local message IDs, preserving self-reply threads without sharing state.
 
-    Format: {(source_connection, source_id): {dest_connection: dest_id}}
-    Example: {('bluesky', 'at://did.../post/123'): {'mastodon': 'MA1'}}
+    Format: {(source_connection, source_id): dest_id}
+    Example: {('bluesky', 'at://did.../post/123'): 'MA1'}
     """
 
-    # Intentionally declaring empty __slots__ since this class does not
-    # add any extra instance attributes.
-    __slots__ = ()
+    __slots__ = ("message_id_map", "message_id_map_lock")
 
-    message_id_map: BoundedOrderedDict = BoundedOrderedDict()
-    message_id_map_lock: Lock = Lock()
+    message_id_map: BoundedOrderedDict
+    message_id_map_lock: Lock
+
+    def __init__(
+        self,
+        name: str,
+        modes: list[ConnectionMode],
+        group: Optional[str] = None,
+    ) -> None:
+        """Initialize destination-owned reply mappings and their lock."""
+        super().__init__(name, modes, group)
+        self.message_id_map = BoundedOrderedDict()
+        self.message_id_map_lock = Lock()
 
     def store_message_mapping(
         self, source_connection: str, source_id: str, dest_id: str
@@ -208,11 +217,7 @@ class ThreadAwareConnection(Connection):
 
         with self.message_id_map_lock:
             key = (source_connection, source_id)
-
-            if key not in self.message_id_map:
-                self.message_id_map[key] = {}
-
-            self.message_id_map[key][self.name] = dest_id
+            self.message_id_map[key] = dest_id
 
             logger.debug(
                 "Stored message mapping: %s/%s -> %s/%s",
@@ -235,8 +240,7 @@ class ThreadAwareConnection(Connection):
 
         with self.message_id_map_lock:
             key = (source_connection, source_id)
-            mapping: dict[str, str] = self.message_id_map.get(key, {})
-            dest_id: Optional[str] = mapping.get(self.name)
+            dest_id: Optional[str] = self.message_id_map.get(key)
 
             if dest_id:
                 logger.debug(
