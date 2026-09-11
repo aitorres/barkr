@@ -48,14 +48,7 @@ class DiscordConnection(Connection):
         where messages will be posted, with visibility and permissions set
         to view and send messages in the desired channel.
 
-        "Message Content Intent" must be enabled in the Discord Developer Portal
-        for the bot to be able to read message content.
-
-        Since Discord.py is usually a blocking library and `barkr` is not
-        designed to have connections blocking the main thread, we don't
-        create a client on initialization. Instead, we create the client
-        as needed to post messages. This might add some overhead,
-        but it allows us to keep the main thread free from blocking.
+        Each batch uses a short-lived client to send messages through the HTTP API.
 
         NOTE: only the write mode is supported. Attempting to use read
         mode will raise a NotImplementedError.
@@ -72,7 +65,6 @@ class DiscordConnection(Connection):
             raise NotImplementedError("DiscordConnection only supports write mode.")
 
         self.intents = discord.Intents.default()
-        self.intents.message_content = True
 
         self.token = token
         self.channel_id = channel_id
@@ -89,8 +81,7 @@ class DiscordConnection(Connection):
         logger.info(
             "Starting new event loop to send messages to Discord (%s)", self.name
         )
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(self._send_messages(messages))
+        asyncio.run(self._send_messages(messages))
         logger.info("Finished posting messages to Discord (%s)", self.name)
 
         return []
@@ -99,25 +90,24 @@ class DiscordConnection(Connection):
         """
         Send a list of messages to a Discord channel as the authenticated bot.
 
-        Creates a new Discord client, authenticates the bot with the provided token,
-        and sends messages to the specified channel without blocking the main thread.
+        Authenticates a short-lived client and sends directly through the HTTP API.
+        Errors propagate to the caller, and the client closes on every exit path.
 
         :param messages: A list of messages to send
         """
 
-        client = discord.Client(intents=self.intents)
+        async with discord.Client(intents=self.intents) as client:
+            await client.login(self.token)
+            channel = await client.fetch_channel(self.channel_id)
+            if not isinstance(channel, discord.abc.Messageable):
+                raise TypeError(
+                    f"Discord channel {self.channel_id} does not support messages."
+                )
 
-        @client.event
-        async def on_ready():
             logger.info(
                 "Discord client connected successfully to send %s messages",
                 len(messages),
             )
-            channel = client.get_channel(self.channel_id)
             for message in messages:
                 await channel.send(message.get_content(MentionStyle.MARKDOWN_LINK))
                 logger.info("Message posted to Discord (%s) channel", self.name)
-
-            await client.close()
-
-        await client.start(self.token)

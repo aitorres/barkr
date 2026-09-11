@@ -3,8 +3,9 @@ Module to implement unit tests for the Discord connection class
 """
 
 import asyncio
-from typing import Any, Optional
+from unittest.mock import AsyncMock, Mock
 
+import discord
 import pytest
 
 from barkr.connections import ConnectionMode, DiscordConnection
@@ -13,74 +14,17 @@ from barkr.models.message_mention import MessageMention
 from barkr.models.message_metadata import MessageMetadata
 
 
-class MockDiscordChannel:
-    """Mock Discord channel collecting sent messages."""
-
-    sent_messages: list[str] = []
-
-    @classmethod
-    def reset(cls) -> None:
-        """Reset shared test state."""
-        cls.sent_messages = []
-
-    async def send(self, message: str) -> None:
-        """Record the outbound Discord message."""
-        self.sent_messages.append(message)
-
-
-class MockDiscordClient:
-    """Mock Discord client with minimal lifecycle hooks."""
-
-    started_tokens: list[str] = []
-    requested_channels: list[int] = []
-    close_calls = 0
-
-    def __init__(self, *, intents: Any) -> None:
-        self.intents = intents
-        self._on_ready: Optional[Any] = None
-
-    @classmethod
-    def reset(cls) -> None:
-        """Reset shared test state."""
-        cls.started_tokens = []
-        cls.requested_channels = []
-        cls.close_calls = 0
-
-    def event(self, callback: Any) -> Any:
-        """Store the registered ready callback."""
-        self._on_ready = callback
-        return callback
-
-    def get_channel(self, channel_id: int) -> MockDiscordChannel:
-        """Return a mock channel and record the request."""
-        self.requested_channels.append(channel_id)
-        return MockDiscordChannel()
-
-    async def close(self) -> None:
-        """Record the close lifecycle event."""
-        type(self).close_calls += 1
-
-    async def start(self, token: str) -> None:
-        """Record the start token and trigger on_ready immediately."""
-        self.started_tokens.append(token)
-        assert self._on_ready is not None
-        await self._on_ready()
-
-
-class MockEventLoop:
-    """Mock event loop that executes the coroutine immediately."""
-
-    run_until_complete_calls = 0
-
-    @classmethod
-    def reset(cls) -> None:
-        """Reset shared test state."""
-        cls.run_until_complete_calls = 0
-
-    def run_until_complete(self, coroutine: Any) -> None:
-        """Run the awaited coroutine inline for the test."""
-        type(self).run_until_complete_calls += 1
-        asyncio.run(coroutine)
+@pytest.fixture(name="discord_client")
+def mock_discord_client(monkeypatch: pytest.MonkeyPatch) -> discord.Client:
+    """Use the real client lifecycle with mocked network operations."""
+    client = discord.Client(intents=discord.Intents.default())
+    monkeypatch.setattr(client, "login", AsyncMock())
+    monkeypatch.setattr(
+        client, "fetch_channel", AsyncMock(return_value=Mock(spec=discord.TextChannel))
+    )
+    monkeypatch.setattr(client, "start", AsyncMock())
+    monkeypatch.setattr("discord.Client", Mock(return_value=client))
+    return client
 
 
 def test_discord_connection() -> None:
@@ -117,13 +61,12 @@ def test_discord_connection() -> None:
     assert not discord_connection.read()
 
 
-def test_discord_send_messages(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Send messages through the mocked Discord client lifecycle."""
+def test_discord_send_messages(discord_client: discord.Client) -> None:
+    """Send messages once without opening a gateway connection."""
 
-    MockDiscordChannel.reset()
-    MockDiscordClient.reset()
-
-    monkeypatch.setattr("discord.Client", MockDiscordClient)
+    assert isinstance(discord_client.login, AsyncMock)
+    assert isinstance(discord_client.fetch_channel, AsyncMock)
+    assert isinstance(discord_client.start, AsyncMock)
 
     connection = DiscordConnection(
         "Discord Connection", [ConnectionMode.WRITE], "test_token", 1234567890
@@ -138,23 +81,31 @@ def test_discord_send_messages(monkeypatch: pytest.MonkeyPatch) -> None:
         )
     )
 
-    assert MockDiscordClient.started_tokens == ["test_token"]
-    assert MockDiscordClient.requested_channels == [1234567890]
-    assert MockDiscordChannel.sent_messages == ["hello", "world"]
-    assert MockDiscordClient.close_calls == 1
+    discord_client.login.assert_awaited_once_with("test_token")
+    discord_client.fetch_channel.assert_awaited_once_with(1234567890)
+    assert [
+        call.args[0]
+        for call in discord_client.fetch_channel.return_value.send.await_args_list
+    ] == ["hello", "world"]
+    discord_client.start.assert_not_called()
+    assert discord_client.is_closed()
 
 
-def test_discord_post_uses_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Create an event loop and drive the async sender through _post."""
+@pytest.mark.parametrize("fails", [False, True])
+def test_discord_post_closes_event_loop(
+    monkeypatch: pytest.MonkeyPatch, fails: bool
+) -> None:
+    """Close the event loop on success and when a send raises an error."""
 
     received_messages: list[list[Message]] = []
-
-    MockEventLoop.reset()
+    loops: list[asyncio.AbstractEventLoop] = []
 
     async def mock_send_messages(_, messages: list[Message]) -> None:
         received_messages.append(messages)
+        loops.append(asyncio.get_running_loop())
+        if fails:
+            raise RuntimeError("Send failed")
 
-    monkeypatch.setattr("asyncio.new_event_loop", MockEventLoop)
     monkeypatch.setattr(
         DiscordConnection,
         "_send_messages",
@@ -166,20 +117,88 @@ def test_discord_post_uses_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     messages = [Message("1", "hello", "source")]
 
-    assert not connection._post(messages)  # pylint: disable=protected-access
-    assert MockEventLoop.run_until_complete_calls == 1
+    if fails:
+        with pytest.raises(RuntimeError, match="Send failed"):
+            connection.write(messages)
+    else:
+        connection.write(messages)
     assert received_messages == [messages]
+    assert len(loops) == 1
+    assert loops[0].is_closed()
+
+
+@pytest.mark.parametrize("operation", ["login", "fetch_channel", "send"])
+def test_discord_failure_closes_client(
+    discord_client: discord.Client, operation: str
+) -> None:
+    """Return network errors to the caller and close the client."""
+    assert isinstance(discord_client.fetch_channel, AsyncMock)
+    assert isinstance(discord_client.start, AsyncMock)
+
+    error = discord.Forbidden(Mock(status=403, reason="Forbidden"), "Access denied")
+    if operation == "send":
+        target = discord_client.fetch_channel.return_value.send
+        target.side_effect = [None, error]
+    else:
+        target = getattr(discord_client, operation)
+        target.side_effect = error
+
+    connection = DiscordConnection(
+        "Discord Connection", [ConnectionMode.WRITE], "test_token", 1234567890
+    )
+    with pytest.raises(discord.Forbidden) as caught:
+        connection.write(
+            [
+                Message("1", "hello", "source"),
+                Message("2", "world", "source"),
+                Message("3", "not sent", "source"),
+            ]
+        )
+
+    assert caught.value is error
+    assert target.await_count == (2 if operation == "send" else 1)
+    assert discord_client.is_closed()
+    discord_client.start.assert_not_called()
+
+
+def test_discord_missing_channel_closes_client(discord_client: discord.Client) -> None:
+    """Return a missing-channel error instead of waiting for another ready event."""
+    assert isinstance(discord_client.fetch_channel, AsyncMock)
+
+    error = discord.NotFound(Mock(status=404, reason="Not Found"), "Unknown Channel")
+    discord_client.fetch_channel.side_effect = error
+    connection = DiscordConnection(
+        "Discord Connection", [ConnectionMode.WRITE], "test_token", 1234567890
+    )
+
+    with pytest.raises(discord.NotFound) as caught:
+        connection.write([Message("1", "hello", "source")])
+
+    assert caught.value is error
+    assert discord_client.is_closed()
+
+
+def test_discord_non_messageable_channel(discord_client: discord.Client) -> None:
+    """Reject channel types that cannot receive messages and close the client."""
+    assert isinstance(discord_client.fetch_channel, AsyncMock)
+
+    discord_client.fetch_channel.return_value = Mock(spec=discord.CategoryChannel)
+    connection = DiscordConnection(
+        "Discord Connection", [ConnectionMode.WRITE], "test_token", 1234567890
+    )
+
+    with pytest.raises(TypeError, match="does not support messages"):
+        connection.write([Message("1", "hello", "source")])
+
+    assert discord_client.is_closed()
 
 
 def test_discord_renders_mentions_with_profile_url(
-    monkeypatch: pytest.MonkeyPatch,
+    discord_client: discord.Client,
 ) -> None:
     """Mention metadata is rendered as markdown links on Discord."""
 
-    MockDiscordChannel.reset()
-    MockDiscordClient.reset()
-
-    monkeypatch.setattr("discord.Client", MockDiscordClient)
+    assert isinstance(discord_client.fetch_channel, AsyncMock)
 
     connection = DiscordConnection(
         "Discord Connection", [ConnectionMode.WRITE], "test_token", 1234567890
@@ -205,6 +224,6 @@ def test_discord_renders_mentions_with_profile_url(
         )
     )
 
-    assert MockDiscordChannel.sent_messages == [
+    discord_client.fetch_channel.return_value.send.assert_awaited_once_with(
         "Hi [@alice.bsky.social](https://bsky.app/profile/did:plc:alice)!"
-    ]
+    )
