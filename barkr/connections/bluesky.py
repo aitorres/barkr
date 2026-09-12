@@ -6,7 +6,7 @@ via their handle and password.
 
 import logging
 import time
-from typing import Final, Optional, Union, cast
+from typing import Final, Optional, cast
 from urllib.parse import urlparse
 
 import requests
@@ -20,10 +20,7 @@ from atproto_client.exceptions import (
 )
 from atproto_client.models import (
     AppBskyEmbedExternal,
-    AppBskyEmbedGallery,
     AppBskyEmbedImages,
-    AppBskyEmbedRecord,
-    AppBskyEmbedRecordWithMedia,
     AppBskyEmbedVideo,
     AppBskyRichtextFacet,
 )
@@ -39,6 +36,7 @@ from httpx import Timeout
 
 from barkr.connections.base import ConnectionMode, ThreadAwareConnection
 from barkr.connections.internal.bluesky_helpers import (
+    BlueskyEmbed,
     extract_mention_facets,
     get_latest_own_post_uri,
     get_meta_tag_from_html_metadata,
@@ -478,16 +476,7 @@ class BlueskyConnection(ThreadAwareConnection):
     def _extract_media_list_from_embed(
         self,
         did: Did,
-        embed: Optional[
-            Union[
-                AppBskyEmbedExternal.Main,
-                AppBskyEmbedRecord.Main,
-                AppBskyEmbedImages.Main,
-                AppBskyEmbedGallery.Main,
-                AppBskyEmbedVideo.Main,
-                AppBskyEmbedRecordWithMedia.Main,
-            ]
-        ],
+        embed: BlueskyEmbed,
     ) -> list[Media]:
         """
         Given a record's embed object, extracts the media list from

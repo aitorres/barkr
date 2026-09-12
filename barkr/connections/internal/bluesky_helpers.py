@@ -15,6 +15,7 @@ from atproto_client.models import (
 )
 from atproto_client.models.app.bsky.feed.defs import FeedViewPost
 from atproto_client.models.app.bsky.feed.post import Record as PostRecord
+from atproto_client.models.dot_dict import DotDict
 from bs4 import BeautifulSoup, Tag
 
 from barkr.models import MessageMention
@@ -27,6 +28,7 @@ BlueskyEmbed = Optional[
         AppBskyEmbedGallery.Main,
         AppBskyEmbedVideo.Main,
         AppBskyEmbedRecordWithMedia.Main,
+        DotDict,
     ]
 ]
 

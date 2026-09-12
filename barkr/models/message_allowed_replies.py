@@ -16,6 +16,7 @@ if TYPE_CHECKING:
         ListRule,
         MentionRule,
     )
+    from atproto_client.models.dot_dict import DotDict
 
 
 class MessageAllowedReplies(Enum):
@@ -73,7 +74,9 @@ class MessageAllowedReplies(Enum):
             )
 
         # Otherwise, we build the thread gate record with the allowed replies
-        allow: list[Union[MentionRule, FollowerRule, FollowingRule, ListRule]] = []
+        allow: list[
+            Union[MentionRule, FollowerRule, FollowingRule, ListRule, DotDict]
+        ] = []
 
         if MessageAllowedReplies.FOLLOWERS in allowed_replies:
             allow.append(AppBskyFeedThreadgate.FollowerRule())
