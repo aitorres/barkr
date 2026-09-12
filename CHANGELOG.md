@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.16.0] - 2026-09-11
+
+### Changed
+
+- Connection groups: Barkr now rejects duplicate connection names across all groups inside the same `Barkr` instance.
+- Discord: improved handling of messages by using direct HTTP calls.
+  - The Message Content intent is no longer required for the connection.
+- Dependency updates and typing improvements.
+  - Updated `atproto` package to the latest version, which includes reduced memory usage when running Bluesky connections.
+
+
 ## [0.15.0] - 2026-06-14
 
 ### Added
