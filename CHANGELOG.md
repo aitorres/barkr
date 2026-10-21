@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.16.1] - 2026-10-20
+
+### Changed
+
+- Dependency updates, upgrading is recommended as a mitigation for [the eMudhra security incident](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576).
+
 ## [0.16.0] - 2026-09-11
 
 ### Changed
