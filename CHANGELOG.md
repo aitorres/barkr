@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.17.0] - 2026-11-08
+
+## Changed
+
+- **Breaking**: `tweepy` (required for the Twitter connection) is now an optional dependency.
+  - By default, a `barkr` installation will not include `tweepy` and Twitter connections will raise an error on runtime.
+  - To use Twitter connections, you can now install the `twitter` extra using `barkr[twitter]` which will include the `tweepy` dependency, or manually install `tweepy` yourself.
+- Dependency updates.
+
 ## [0.16.2] - 2026-10-23
 
 ### Changed
