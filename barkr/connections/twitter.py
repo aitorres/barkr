@@ -6,12 +6,18 @@ This module uses the Tweepy library to interact with the Twitter API.
 """
 
 import logging
-from typing import Final, Optional
-
-from tweepy import Client
+from importlib import import_module
+from typing import Any, Final, Optional
 
 from barkr.connections.base import ConnectionMode, ThreadAwareConnection
 from barkr.models import Message
+
+TWEEPY_CLIENT: Any = None
+try:
+    TWEEPY_CLIENT = getattr(import_module("tweepy"), "Client")
+except ModuleNotFoundError as error:
+    if error.name != "tweepy":
+        raise
 
 logger = logging.getLogger()
 
@@ -27,7 +33,7 @@ class TwitterConnection(ThreadAwareConnection):
 
     __slots__ = ("client",)
 
-    client: Client
+    client: Any
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
@@ -66,8 +72,13 @@ class TwitterConnection(ThreadAwareConnection):
         logger.info("Initializing Twitter (%s) connection", self.name)
         if self.modes != [ConnectionMode.WRITE]:
             raise NotImplementedError("TwitterConnection only supports write mode.")
+        if TWEEPY_CLIENT is None:
+            raise ImportError(
+                "Twitter support requires Tweepy. "
+                "Install it with `pip install barkr[twitter]`."
+            )
 
-        self.client = Client(
+        self.client = TWEEPY_CLIENT(
             consumer_key=consumer_key,
             consumer_secret=consumer_secret,
             access_token=access_token,

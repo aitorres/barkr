@@ -20,6 +20,14 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install `barkr`
 pip install barkr
 ```
 
+By default, Barkr installs without Twitter support. To use the Twitter connection, you need to install Barkr with its Twitter extra.
+
+```bash
+pip install "barkr[twitter]"
+```
+
+All other connections work without any extra installation.
+
 ## Usage
 
 Create a Python script and specify all the channels you want to use. Channel connections are present in the [`barkr.connections`](./barkr/connections/) module.

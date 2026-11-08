@@ -81,7 +81,7 @@ def test_twitter_connection(monkeypatch: pytest.MonkeyPatch) -> None:
 
     mock_client = MockTweepyClient()
     monkeypatch.setattr(
-        "barkr.connections.twitter.Client",
+        "barkr.connections.twitter.TWEEPY_CLIENT",
         lambda *args, **kwargs: mock_client,
     )
 
@@ -128,6 +128,25 @@ def test_twitter_connection(monkeypatch: pytest.MonkeyPatch) -> None:
     ]
 
 
+def test_twitter_connection_requires_optional_dependency(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Using Twitter without the optional dependency reports how to install it."""
+
+    monkeypatch.setattr("barkr.connections.twitter.TWEEPY_CLIENT", None)
+
+    with pytest.raises(ImportError, match=r"pip install barkr\[twitter\]"):
+        TwitterConnection(
+            "Twitter Connection",
+            [ConnectionMode.WRITE],
+            "test_consumer_key",
+            "test_consumer_secret",
+            "test_access_token",
+            "test_access_token_secret",
+            "test_bearer_token",
+        )
+
+
 def test_twitter_thread_support(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Unit tests for Twitter threading/reply support
@@ -135,7 +154,7 @@ def test_twitter_thread_support(monkeypatch: pytest.MonkeyPatch) -> None:
 
     mock_client = MockTweepyClient()
     monkeypatch.setattr(
-        "barkr.connections.twitter.Client",
+        "barkr.connections.twitter.TWEEPY_CLIENT",
         lambda *args, **kwargs: mock_client,
     )
 
@@ -209,7 +228,7 @@ def test_twitter_multiple_connections_thread_mapping(
         return mock_client_1 if create_mock_client_called == 1 else mock_client_2
 
     monkeypatch.setattr(
-        "barkr.connections.twitter.Client",
+        "barkr.connections.twitter.TWEEPY_CLIENT",
         create_mock_client,
     )
 

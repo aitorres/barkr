@@ -10,7 +10,8 @@ jobs:
     strategy:
       matrix:
         python-version: [ '3.11', '3.12', '3.13', '3.14']
-    name: Run checks in Python ${{ matrix.python-version }}
+        twitter: [false, true]
+    name: 'Run checks in Python ${{ matrix.python-version }} (Twitter extra: ${{ matrix.twitter }})'
     steps:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,8 +28,12 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
-      - name: Install dependencies with Poetry
+      - name: Install dependencies without Twitter
+        if: ${{ !matrix.twitter }}
         run: poetry install --no-interaction --no-root
+      - name: Install dependencies with Twitter
+        if: ${{ matrix.twitter }}
+        run: poetry install --no-interaction --no-root --extras twitter
       - name: Check types with mypy
         run: poetry run mypy barkr
       - name: Lint code with pylint and flake8
