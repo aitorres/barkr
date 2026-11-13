@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [0.17.1] - 2026-11-13
 
-## Changed
+### Changed
 
 - Minimum Python version set to Python 3.11.5
 - Support for Python 3.15
@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [0.17.0] - 2026-11-08
 
-## Changed
+### Changed
 
 - **Breaking**: `tweepy` (required for the Twitter connection) is now an optional dependency.
   - By default, a `barkr` installation will not include `tweepy` and Twitter connections will raise an error on runtime.
