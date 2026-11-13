@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.17.1] - 2026-11-13
+
+## Changed
+
+- Minimum Python version set to Python 3.11.5
+- Support for Python 3.15
+- Minor dependency updates
+
 ## [0.17.0] - 2026-11-08
 
 ## Changed
