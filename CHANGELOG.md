@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.17.2] - 2026-11-22
+
+### Added
+
+- If the Bluesky connection hits rate limits, relevant retry-after information will be logged.
+
+### Changed
+
+- Minor dependency updates.
+
 ## [0.17.1] - 2026-11-13
 
 ### Changed
