@@ -15,6 +15,7 @@ from atproto_client.exceptions import (
     BadRequestError,
     InvokeTimeoutError,
     NetworkError,
+    RateLimitExceededError,
     RequestErrorBase,
     RequestException,
 )
@@ -73,6 +74,42 @@ BLUESKY_HANDLED_EXCEPTIONS: Final[tuple[type[RequestErrorBase], ...]] = (
 )
 
 
+def _log_rate_limit_error(
+    connection_name: str,
+    operation: str,
+    error: RateLimitExceededError,
+    retry_delay: Optional[float] = None,
+) -> None:
+    """Log Bluesky quota and retry metadata without exposing unrelated headers."""
+
+    response = error.response
+    headers = response.headers if response is not None else {}
+    rate_limit_headers = {
+        key: value
+        for key, value in headers.items()
+        if "ratelimit" in key.lower() or key.lower() == "retry-after"
+    }
+
+    logger.warning(
+        "Bluesky (%s) %s rate limited (HTTP 429): "
+        "limit=%s remaining=%s policy=%s reset_at=%s retry_after_seconds=%s "
+        "retry_after_header=%s scheduled_retry_delay=%s headers=%s",
+        connection_name,
+        operation,
+        error.limit,
+        error.remaining,
+        error.policy,
+        error.reset_at,
+        error.retry_after,
+        next(
+            (value for key, value in headers.items() if key.lower() == "retry-after"),
+            None,
+        ),
+        retry_delay,
+        rate_limit_headers,
+    )
+
+
 class BlueskyConnection(ThreadAwareConnection):
     """
     Custom connection class for Bluesky accounts,
@@ -119,7 +156,11 @@ class BlueskyConnection(ThreadAwareConnection):
         self.service = Client(
             request=Request(timeout=Timeout(timeout=BLUESKY_REQUEST_TIMEOUT))
         )
-        self.service.login(handle, password)
+        try:
+            self.service.login(handle, password)
+        except RateLimitExceededError as e:
+            _log_rate_limit_error(self.name, "login", e)
+            raise
         self.handle = handle
         self.compress_images = compress_images
         self.min_id = None
@@ -232,70 +273,12 @@ class BlueskyConnection(ThreadAwareConnection):
             language = (
                 [message.metadata.language] if message.metadata.language else None
             )
-            try:
-                created_record: CreateRecordResponse = self.service.send_post(
-                    text=message.message,
-                    embed=embed,
-                    facets=facets if facets else None,
-                    langs=language,
-                )
-            except NetworkError as e:
-                # Something happened with the Bluesky API (timeout, DNS failure,
-                # connection drop, etc.), let's recover
-                logger.error(
-                    "Bluesky (%s) post failed with network error: %s | %s",
-                    self.name,
-                    str(e),
-                    e.response if hasattr(e, "response") else "no response",
-                )
-
-                # In case we _did_ post the message, update min_id from the feed
-                # to avoid re-reading our own post
-                self._set_min_id_from_user_feed()
+            created_record = self._send_post(message, embed, facets, language)
+            if created_record is None:
                 continue
-            except BadRequestError as e:
-                # We could be trying to create an embed that is too large,
-                # let's recover
-                error_response = e.response
-                if error_response is None:
-                    logger.error(
-                        "BadRequestError from Bluesky (%s) has no response,"
-                        " cannot retry.",
-                        self.name,
-                    )
-                    raise e
-
-                content = error_response.content
-
-                if isinstance(content, XrpcError):
-                    created_record = self._retry_post_message(
-                        message, facets, language, e
-                    )
-                else:
-                    logger.error(
-                        "Bluesky (%s) post failed with unexpected error: %s",
-                        self.name,
-                        content,
-                    )
-                    raise e
 
             created_uri = created_record.uri
-
-            # If the message has reply restrictions, we create a thread gate record
-            # for them
-            if message.metadata.allowed_replies:
-                thread_gate_record = MessageAllowedReplies.to_bluesky_threadgate(
-                    created_uri,
-                    message.metadata.allowed_replies,
-                    self.service.get_current_time_iso(),
-                )
-
-                if thread_gate_record and self.service.me is not None:
-                    self.service.app.bsky.feed.threadgate.create(
-                        self.service.me.did,
-                        thread_gate_record,
-                        AtUri.from_str(created_uri).rkey,
-                    )
+            self._create_thread_gate(message, created_uri)
 
             logger.info(
                 "Posted message %s to Bluesky (%s) connection (URI: %s)",
@@ -319,6 +302,91 @@ class BlueskyConnection(ThreadAwareConnection):
             )
 
         return posted_message_ids
+
+    def _send_post(
+        self,
+        message: Message,
+        embed: Optional[AppBskyEmbedExternal.Main],
+        facets: Optional[list[AppBskyRichtextFacet.Main]],
+        language: Optional[list[str]],
+    ) -> Optional[CreateRecordResponse]:
+        """Send one post and handle recoverable API failures."""
+
+        try:
+            return self.service.send_post(
+                text=message.message,
+                embed=embed,
+                facets=facets if facets else None,
+                langs=language,
+            )
+        except NetworkError as e:
+            logger.error(
+                "Bluesky (%s) post failed with network error: %s | %s",
+                self.name,
+                str(e),
+                e.response if hasattr(e, "response") else "no response",
+            )
+            self._set_min_id_from_user_feed()
+            return None
+        except RateLimitExceededError as e:
+            _log_rate_limit_error(self.name, "posting", e)
+            raise
+        except BadRequestError as e:
+            return self._handle_bad_request_post(message, facets, language, e)
+
+    def _handle_bad_request_post(
+        self,
+        message: Message,
+        facets: Optional[list[AppBskyRichtextFacet.Main]],
+        language: Optional[list[str]],
+        bad_request_error: BadRequestError,
+    ) -> CreateRecordResponse:
+        """Retry an embed-related bad request or raise unexpected failures."""
+
+        error_response = bad_request_error.response
+        if error_response is None:
+            logger.error(
+                "BadRequestError from Bluesky (%s) has no response, cannot retry.",
+                self.name,
+            )
+            raise bad_request_error
+
+        content = error_response.content
+        if isinstance(content, XrpcError):
+            return self._retry_post_message(
+                message, facets, language, bad_request_error
+            )
+
+        logger.error(
+            "Bluesky (%s) post failed with unexpected error: %s",
+            self.name,
+            content,
+        )
+        raise bad_request_error
+
+    def _create_thread_gate(self, message: Message, created_uri: str) -> None:
+        """Create a thread gate when the message defines reply restrictions."""
+
+        if not message.metadata.allowed_replies:
+            return
+
+        thread_gate_record = MessageAllowedReplies.to_bluesky_threadgate(
+            created_uri,
+            message.metadata.allowed_replies,
+            self.service.get_current_time_iso(),
+        )
+        if not thread_gate_record or self.service.me is None:
+            return
+
+        try:
+            self.service.app.bsky.feed.threadgate.create(
+                self.service.me.did,
+                thread_gate_record,
+                AtUri.from_str(created_uri).rkey,
+            )
+        except RateLimitExceededError as e:
+            _log_rate_limit_error(self.name, "creating thread gate", e)
+            raise
 
     def _retry_post_message(
         self,
@@ -378,12 +446,16 @@ class BlueskyConnection(ThreadAwareConnection):
             )
             raise bad_request_error
 
-        return self.service.send_post(
-            text=message.message,
-            embed=None,
-            facets=facets if facets else None,
-            langs=language,
-        )
+        try:
+            return self.service.send_post(
+                text=message.message,
+                embed=None,
+                facets=facets if facets else None,
+                langs=language,
+            )
+        except RateLimitExceededError as e:
+            _log_rate_limit_error(self.name, "retrying post without embed", e)
+            raise
 
     def _generate_post_embed_and_facets(
         self, text: str
@@ -522,6 +594,8 @@ class BlueskyConnection(ThreadAwareConnection):
                     params={"cid": blob_cid, "did": did}
                 )
             except BLUESKY_HANDLED_EXCEPTIONS as e:
+                if isinstance(e, RateLimitExceededError):
+                    _log_rate_limit_error(self.name, "fetching blob", e)
                 logger.warning(
                     "Failed to fetch blob from Bluesky (%s) for CID %s: %s",
                     self.name,
@@ -564,6 +638,8 @@ class BlueskyConnection(ThreadAwareConnection):
         try:
             return self.service.upload_blob(img_data).blob
         except BLUESKY_HANDLED_EXCEPTIONS as e:
+            if isinstance(e, RateLimitExceededError):
+                _log_rate_limit_error(self.name, "uploading image blob", e)
             logger.warning("Failed to upload image to Bluesky (%s): %s", self.name, e)
             return None
 
@@ -701,6 +777,15 @@ class BlueskyConnection(ThreadAwareConnection):
 
                 return user_feed
             except BLUESKY_HANDLED_EXCEPTIONS as e:
+                delay = None
+                if attempt < EXPONENTIAL_BACKOFF_RETRIES - 1:
+                    delay = EXPONENTIAL_BACKOFF_BASE_DELAY * (2**attempt)
+
+                if isinstance(e, RateLimitExceededError):
+                    _log_rate_limit_error(
+                        self.name, "fetching author feed", e, retry_delay=delay
+                    )
+
                 if attempt >= EXPONENTIAL_BACKOFF_RETRIES - 1:
                     logger.warning(
                         "Failed to fetch author feed for Bluesky (%s) "
@@ -712,7 +797,7 @@ class BlueskyConnection(ThreadAwareConnection):
                     )
                     break
 
-                delay = EXPONENTIAL_BACKOFF_BASE_DELAY * (2**attempt)
+                assert delay is not None
                 logger.warning(
                     "Attempt %d to fetch author feed for Bluesky (%s) failed: %s. "
                     "Retrying in %.2f seconds...",
